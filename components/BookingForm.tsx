@@ -94,60 +94,60 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-2xl comic-border overflow-hidden relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white w-full sm:max-w-md max-h-screen sm:max-h-[98vh] overflow-y-auto border-b-2 sm:border-4 border-black relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 bg-black text-white w-8 h-8 rounded-full flex items-center justify-center font-bold"
+          className="absolute top-2 right-2 bg-black text-white w-6 h-6 rounded-full flex items-center justify-center font-bold z-20 text-[10px]"
         >
           X
         </button>
 
-        <div className="bg-blue-600 p-6 border-b-4 border-black text-white">
-          <h2 className="font-comic text-3xl">SECURE YOUR SERVICE!</h2>
-          <p className="font-bold italic uppercase">Enlisting {activePlan.name}</p>
+        <div className="bg-blue-600 p-2 sm:p-5 border-b-2 border-black text-white pr-10">
+          <h2 className="font-comic text-sm sm:text-2xl leading-none mb-0.5">SECURE YOUR SERVICE!</h2>
+          <p className="text-[9px] sm:text-sm font-bold italic uppercase opacity-90 leading-none">Enlisting {activePlan.name}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8">
+        <form onSubmit={handleSubmit} className="p-2 sm:p-6 space-y-2.5">
           {step === 1 ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2.5 sm:space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-bold mb-1">YOUR NAME</label>
+                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">YOUR NAME</label>
                   <input
                     required
-                    className="w-full comic-border-sm p-3 font-bold uppercase"
+                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold uppercase outline-none focus:bg-blue-50"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block font-bold mb-1">EMAIL ADDRESS</label>
+                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">EMAIL ADDRESS</label>
                   <input
                     required
                     type="email"
-                    className="w-full comic-border-sm p-3 font-bold"
+                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold outline-none focus:bg-blue-50"
                     value={formData.email}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block font-bold mb-1">SERVICE ADDRESS</label>
+              <div className="grid grid-cols-1 gap-2">
+                <div>
+                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">SERVICE ADDRESS</label>
                   <input
                     required
-                    className="w-full comic-border-sm p-3 font-bold uppercase"
+                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold uppercase outline-none focus:bg-blue-50"
                     value={formData.address}
                     onChange={e => setFormData({ ...formData, address: e.target.value })}
                     placeholder="STREET ADDRESS"
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block font-bold mb-1">ZIP / POSTAL CODE</label>
+                <div>
+                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">ZIP / POSTAL CODE</label>
                   <input
                     required
-                    className="w-full comic-border-sm p-3 font-bold uppercase"
+                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold uppercase outline-none focus:bg-blue-50"
                     value={formData.zip}
                     onChange={e => setFormData({ ...formData, zip: e.target.value })}
                     placeholder="92691"
@@ -155,113 +155,97 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                 </div>
               </div>
 
-              <div className="p-4 bg-yellow-100 comic-border-sm">
-                <h3 className="font-comic text-xl mb-3">CUSTOMIZE MISSION:</h3>
-                <div className="space-y-3">
+              <div className="p-2 sm:p-4 bg-yellow-101 border-2 border-dashed border-black">
+                <h4 className="font-comic text-[10px] sm:text-xl mb-1 sm:mb-3">MISSION DETAILS:</h4>
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold">TOTAL DOGS:</span>
-                    <div className="flex items-center space-x-4">
-                      <button type="button" onClick={() => setFormData({ ...formData, dogs: Math.max(1, formData.dogs - 1) })} className="bg-black text-white w-8 h-8 font-bold">-</button>
-                      <span className="font-comic text-2xl">{formData.dogs}</span>
-                      <button type="button" onClick={() => setFormData({ ...formData, dogs: formData.dogs + 1 })} className="bg-black text-white w-8 h-8 font-bold">+</button>
+                    <span className="font-bold text-[10px] sm:text-base">TOTAL DOGS:</span>
+                    <div className="flex items-center space-x-2">
+                      <button type="button" onClick={() => setFormData({ ...formData, dogs: Math.max(1, formData.dogs - 1) })} className="bg-black text-white w-6 h-6 font-bold text-xs">-</button>
+                      <span className="font-comic text-base sm:text-2xl w-4 text-center">{formData.dogs}</span>
+                      <button type="button" onClick={() => setFormData({ ...formData, dogs: formData.dogs + 1 })} className="bg-black text-white w-6 h-6 font-bold text-xs">+</button>
                     </div>
                   </div>
-                  <label className="flex items-center space-x-3 cursor-pointer">
+                  <label className="flex items-center space-x-2 cursor-pointer pt-0.5">
                     <input
                       type="checkbox"
-                      className="w-6 h-6 border-2 border-black"
+                      className="w-4 h-4 border-2 border-black accent-blue-600"
                       checked={formData.deodorizer}
                       onChange={e => setFormData({ ...formData, deodorizer: e.target.checked })}
                     />
-                    <span className="font-bold uppercase">ADD YARD DEODORIZER (+$25)</span>
+                    <span className="font-bold uppercase text-[9px] sm:text-base">ADD YARD DEODORIZER (+$25)</span>
                   </label>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="p-6 bg-green-50 comic-border-sm">
-                <h3 className="font-comic text-2xl mb-4 text-green-700">MISSION SUMMARY:</h3>
-                <div className="space-y-3 text-lg">
-                  <div className="flex justify-between border-b border-black/10 pb-2">
+            <div className="space-y-3 sm:space-y-6">
+              <div className="p-3 sm:p-6 bg-green-50 border border-black/10">
+                <h3 className="font-comic text-base sm:text-2xl mb-2 sm:mb-4 text-green-700">MISSION SUMMARY:</h3>
+                <div className="space-y-1.5 sm:space-y-3 text-sm sm:text-lg">
+                  <div className="flex justify-between border-b border-black/10 pb-1.5">
                     <span className="font-bold">{activePlan.name}</span>
                     <span className="font-bold">${activePlan.price}</span>
                   </div>
                   {formData.dogs > 1 && (
-                    <div className="flex justify-between border-b border-black/10 pb-2">
+                    <div className="flex justify-between border-b border-black/10 pb-1.5">
                       <span>Extra Dogs ({formData.dogs - 1})</span>
                       <span className="font-bold">${(formData.dogs - 1) * 10}</span>
                     </div>
                   )}
                   {formData.deodorizer && (
-                    <div className="flex justify-between border-b border-black/10 pb-2">
+                    <div className="flex justify-between border-b border-black/10 pb-1.5">
                       <span>Yard Deodorizer</span>
                       <span className="font-bold">$25</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-2xl font-comic pt-4">
+                  <div className="flex justify-between text-base sm:text-2xl font-comic pt-2 sm:pt-4">
                     <span>MONTHLY TOTAL:</span>
                     <span className="text-red-600">${total}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Upgrade / Downgrade Section */}
-              <div className="space-y-3">
-                <h4 className="font-comic text-lg text-blue-700 uppercase">Optimize Your Protection:</h4>
-
-                {/* Super Scooops Upgrade (Most Prominent) */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-[9px] sm:text-lg text-blue-700 uppercase">Optimize Your Protection:</h4>
                 {activePlan.id !== 'super-scooper' && (
                   <button
                     type="button"
                     onClick={() => setActivePlan(PLANS[2])}
-                    className="w-full p-2.5 bg-red-600 text-white comic-border-sm hover:scale-[1.01] transition-all flex items-center justify-between group"
+                    className="w-full p-2 bg-red-600 text-white border-2 border-black hover:scale-[1.01] transition-all flex items-center justify-between group"
                   >
                     <div className="text-left">
-                      <p className="font-comic text-lg leading-none">UPGRADE TO SUPER SCOOOPS</p>
-                      <p className="text-[10px] font-bold opacity-90 uppercase">Maximum Defense (3 visits/week)</p>
+                      <p className="font-comic text-xs sm:text-lg leading-none">UPGRADE TO SUPER SCOOOPS</p>
+                      <p className="text-[8px] sm:text-[10px] font-bold opacity-80 uppercase leading-none mt-0.5">Maximum Defense (3 visits/week)</p>
                     </div>
-                    <span className="text-xl group-hover:translate-x-1 transition-transform">🚀</span>
+                    <span className="text-base sm:text-xl group-hover:translate-x-1 transition-transform">🚀</span>
                   </button>
                 )}
-
-                {/* Hero Plan Optimization (Recommended) */}
                 {activePlan.id !== 'hero' && (
                   <button
                     type="button"
                     onClick={() => setActivePlan(PLANS[1])}
-                    className="w-full p-3 bg-blue-100 border-2 border-blue-600 hover:bg-blue-200 transition-colors flex items-center justify-between group"
+                    className="w-full p-2 bg-blue-50 border-2 border-blue-600 hover:bg-blue-100 transition-colors flex items-center justify-between group"
                   >
                     <div className="text-left">
-                      <p className="font-bold text-blue-800 text-sm">RECRUIT THE HERO PLAN (RECOMMENDED)</p>
-                      <p className="text-[10px] font-bold text-blue-600 uppercase">Most Popular Choice • $160/mo</p>
+                      <p className="font-bold text-blue-800 text-xs sm:text-sm">RECRUIT THE HERO PLAN</p>
+                      <p className="text-[8px] sm:text-[10px] font-bold text-blue-600 uppercase">Most Popular • $160/mo</p>
                     </div>
-                    <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded">PROMO</span>
-                  </button>
-                )}
-
-                {/* Sidekick Downgrade (Subtle) */}
-                {activePlan.id !== 'sidekick' && (
-                  <button
-                    type="button"
-                    onClick={() => setActivePlan(PLANS[0])}
-                    className="w-full text-center text-gray-400 hover:text-gray-600 text-[10px] font-bold uppercase underline decoration-dotted"
-                  >
-                    Wait, I only need The Sidekick Plan ($80/mo)
+                    <span className="bg-blue-600 text-white text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded">PROMO</span>
                   </button>
                 )}
               </div>
 
-              <p className="text-sm italic text-gray-600 text-center">No commitment! Cancel anytime after the first month.</p>
+              <p className="text-[10px] italic text-gray-600 text-center uppercase font-bold">No commitment! Cancel anytime.</p>
             </div>
           )}
 
-          <div className="mt-6 flex flex-col sm:flex-row gap-3">
+          <div className="mt-4 flex flex-col sm:flex-row gap-2">
             {step === 2 && (
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex-1 py-3 font-comic text-lg bg-gray-200 border-2 border-black hover:bg-gray-300 active:translate-y-1 transition-all"
+                className="flex-1 py-2 font-comic text-sm sm:text-lg bg-gray-200 border-2 border-black hover:bg-gray-300 active:translate-y-1 transition-all"
               >
                 GO BACK
               </button>
@@ -269,7 +253,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`flex-[2] py-3 px-4 font-comic text-xl bg-red-600 text-white comic-border hover:bg-red-700 active:scale-95 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex-[2] py-2.5 sm:py-3 px-4 font-comic text-base sm:text-xl bg-red-600 text-white border-2 border-black hover:bg-red-700 active:scale-95 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {step === 1 ? 'NEXT: REVIEW MISSION' : (isSubmitting ? 'SENDING TO HQ...' : `ACTIVATE ${activePlan.id === 'hero' ? 'HERO' : 'MISSION'} SERVICE!`)}
             </button>

@@ -36,7 +36,11 @@ const handler: Handler = async (event) => {
             address: data.address,
             email_address: data.email,
             zip_code: data.zip,
-            comment: `Plan: ${data.planId} | Dogs: ${data.dogs} | Deodorizer: ${data.deodorizer ? 'Yes' : 'No'}`,
+            comment: `SUPER SCOOOPS RECRUIT:
+Plan: ${data.planName || data.planId}
+Dogs: ${data.dogs}
+Deodorizer: ${data.deodorizer ? 'YES' : 'NO'}
+Estimated Total: $${data.totalPrice}/mo`,
             marketing_allowed: 1,
             marketing_allowed_source: "open_api"
         };

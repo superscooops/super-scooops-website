@@ -20,13 +20,39 @@
 </head>
 
 <body class="bg-[#FFCC00]/10 min-h-screen flex items-center justify-center p-6">
-    <div class="max-w-md w-full bg-white comic-border p-12 text-center">
-        <h1 class="font-comic text-5xl text-blue-600 mb-6 uppercase">MISSION SUCCESS!</h1>
-        <p class="text-xl font-bold text-gray-700 mb-8">POW! Your payment was received. Our scooping heroes are gearing
-            up as we speak!</p>
-        <a href="/"
-            class="inline-block bg-red-600 text-white font-comic text-2xl px-8 py-4 comic-border hover:scale-105 transition-all">RETURN
-            TO HQ</a>
+    <div class="max-w-md w-full bg-white comic-border p-8 sm:p-12 text-center">
+        <h1 class="font-comic text-4xl sm:text-5xl text-blue-600 mb-4 sm:mb-6 uppercase">MISSION SUCCESS!</h1>
+        <p class="text-lg sm:text-xl font-bold text-gray-700 mb-6">POW! Your payment was received. Our scooping heroes
+            are gearing up as we speak!</p>
+
+        <div class="bg-blue-50 border-2 border-dashed border-blue-600 p-4 mb-8 text-left">
+            <h2 class="font-comic text-xl text-blue-800 mb-3 uppercase">WHAT'S NEXT?</h2>
+            <ul class="space-y-3 text-sm sm:text-base font-bold text-blue-900">
+                <li class="flex items-start">
+                    <span class="mr-2">📧</span>
+                    <span>Check your inbox for your "Welcome to Super Scooops" email!</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2">🔑</span>
+                    <span>Use the login link in that email to activate your Client Portal.</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="mr-2">📅</span>
+                    <span>Manage your schedule and dog count 24/7 in the portal!</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <a href="https://client.sweepandgo.com" target="_blank"
+                class="inline-block bg-blue-600 text-white font-comic text-xl sm:text-2xl px-6 py-3 sm:py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                GO TO CLIENT PORTAL
+            </a>
+            <a href="/"
+                class="inline-block bg-white text-black font-comic text-lg sm:text-xl px-4 py-2 opacity-60 hover:opacity-100 transition-all">
+                RETURN TO HQ
+            </a>
+        </div>
     </div>
 </body>
 
