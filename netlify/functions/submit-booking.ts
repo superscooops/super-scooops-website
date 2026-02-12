@@ -17,7 +17,7 @@ const handler: Handler = async (event) => {
 
         // Retrieve API Key and Org Slug from Environment Variables
         const API_KEY = process.env.SWEEP_AND_GO_API_KEY;
-        const ORG_SLUG = process.env.SWEEP_AND_GO_ORG_SLUG || 'super-scooops';
+        const ORG_SLUG = process.env.SWEEP_AND_GO_ORG_SLUG || 'super-scooops-qhnjn';
 
         if (!API_KEY) {
             console.error('Sweep & Go API Key is missing in environment variables.');
@@ -27,7 +27,7 @@ const handler: Handler = async (event) => {
             };
         }
 
-        console.log('Attempting CRM submission for:', data.email);
+        console.log(`Attempting CRM submission. Org: ${ORG_SLUG}, Key visible: ${API_KEY.substring(0, 5)}...`);
 
         // Prepare data payload for Sweep & Go (Lead Submission)
         const payload = {
