@@ -1,0 +1,7 @@
+{
+  "name": "Super Scooper's Pet Waste Removal",
+  "description": "A superhero-themed professional pet waste removal service landing page with comic-book style branding and integrated booking.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
