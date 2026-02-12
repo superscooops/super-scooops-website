@@ -15,8 +15,9 @@ const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing required fields' }) };
         }
 
-        // Retrieve API Key from Environment Variables
+        // Retrieve API Key and Org Slug from Environment Variables
         const API_KEY = process.env.SWEEP_AND_GO_API_KEY;
+        const ORG_SLUG = process.env.SWEEP_AND_GO_ORG_SLUG || 'super-scooops';
 
         if (!API_KEY) {
             console.error('Sweep & Go API Key is missing in environment variables.');
@@ -28,26 +29,20 @@ const handler: Handler = async (event) => {
 
         console.log('Attempting CRM submission for:', data.email);
 
-        // Prepare data payload for Sweep & Go (Example Structure - adjust based on actual API docs)
+        // Prepare data payload for Sweep & Go (Lead Submission)
         const payload = {
-            client: {
-                firstName: data.name.split(' ')[0],
-                lastName: data.name.split(' ').slice(1).join(' ') || '',
-                email: data.email,
-                address: {
-                    line1: data.address,
-                    postalCode: data.zip
-                }
-            },
-            service: {
-                planId: data.planId,
-                dogCount: data.dogs,
-                deodorizer: data.deodorizer
-            }
+            organization: ORG_SLUG,
+            name: data.name,
+            address: data.address,
+            email_address: data.email,
+            zip_code: data.zip,
+            comment: `Plan: ${data.planId} | Dogs: ${data.dogs} | Deodorizer: ${data.deodorizer ? 'Yes' : 'No'}`,
+            marketing_allowed: 1,
+            marketing_allowed_source: "open_api"
         };
 
-        // Make the request to Sweep & Go API
-        const response = await fetch('https://openapi.sweepandgo.com/api/v2/clients/client_details', {
+        // Make the request to Sweep & Go API (Lead Creation Endpoint)
+        const response = await fetch('https://openapi.sweepandgo.com/api/v2/client_on_boarding/out_of_service_form', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
