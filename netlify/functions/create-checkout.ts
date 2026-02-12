@@ -3,10 +3,10 @@ import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-    apiVersion: '2024-12-18.ac', // Using a stable version
+    apiVersion: '2024-12-18', // Correcting invalid version
 });
 
-const handler: Handler = async (event) => {
+async function handler(event) {
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
@@ -74,6 +74,6 @@ const handler: Handler = async (event) => {
             body: JSON.stringify({ error: error.message }),
         };
     }
-};
+}
 
 export { handler };
