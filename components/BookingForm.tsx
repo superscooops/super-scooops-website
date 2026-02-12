@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
-import { ServicePlan, AddOn } from '../types';
-import { ADD_ONS, PLANS } from '../constants';
+import React, { useState, useMemo } from 'react';
+import { ServicePlan } from '../types';
+import { PLANS, FREQUENCIES } from '../constants';
 
 interface BookingFormProps {
   selectedPlan: ServicePlan;
@@ -9,197 +9,241 @@ interface BookingFormProps {
 }
 
 const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
-  const [activePlan, setActivePlan] = useState<ServicePlan>(selectedPlan);
-  const [step, setStep] = useState(1);
+  const [dogs, setDogs] = useState(1);
+  const [freqIndex, setFreqIndex] = useState(2); // Default to Weekly
+  const [showSignup, setShowSignup] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     address: '',
-    zip: '',
-    dogs: 1,
+    zip: '92691',
+    phone: '',
     deodorizer: false
   });
 
-  const total = (activePlan.price + (formData.dogs > 1 ? (formData.dogs - 1) * 2.5 : 0) + (formData.deodorizer ? 6.25 : 0)).toFixed(2);
+  const selectedFreq = FREQUENCIES[freqIndex];
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Dynamic Pricing Calculation
+  const quoteTotal = useMemo(() => {
+    const basePrice = 20; // Base weekly price for 1 dog 1x weekly
+    const dogUpsell = (dogs - 1) * 2.50;
+    const deodorizerPrice = formData.deodorizer ? 6.25 : 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    // Total * Frequency Factor
+    return ((basePrice + dogUpsell + deodorizerPrice) * selectedFreq.factor).toFixed(2);
+  }, [dogs, freqIndex, formData.deodorizer]);
+
+  const handleGetQuote = (e: React.FormEvent) => {
     e.preventDefault();
-    if (step < 2) {
-      setStep(2);
-    } else {
-      // Direct redirect to Sweep & Go Registration
-      window.open('https://client.sweepandgo.com/super-scooops-qhnjn/register', '_blank');
-      onClose();
-    }
+    setShowSignup(true);
+    // Smooth scroll to signup if on mobile
+    setTimeout(() => {
+      document.getElementById('signup-fields')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handleActivate = () => {
+    window.open('https://client.sweepandgo.com/super-scooops-qhnjn/register', '_blank');
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white w-full sm:max-w-md max-h-screen sm:max-h-[98vh] overflow-y-auto border-b-2 sm:border-4 border-black relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="bg-white w-full max-w-4xl min-h-screen sm:min-h-0 border-x-0 sm:border-4 border-black relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]">
+
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 bg-black text-white w-6 h-6 rounded-full flex items-center justify-center font-bold z-20 text-[10px]"
+          className="absolute top-4 right-4 bg-black text-white w-8 h-8 rounded-full flex items-center justify-center font-bold z-50 hover:scale-110 transition-transform"
         >
           X
         </button>
 
-        <div className="bg-blue-600 p-2 sm:p-5 border-b-2 border-black text-white pr-10">
-          <h2 className="font-comic text-sm sm:text-2xl leading-none mb-0.5">SECURE YOUR SERVICE!</h2>
-          <p className="text-[9px] sm:text-sm font-bold italic uppercase opacity-90 leading-none">Enlisting {activePlan.name}</p>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2">
 
-        <form onSubmit={handleSubmit} className="p-2 sm:p-6 space-y-2.5">
-          {step === 1 ? (
-            <div className="space-y-2.5 sm:space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {/* LEFT COLUMN: THE QUOTE TOOL */}
+          <div className="p-6 sm:p-10 border-r-0 lg:border-r-4 border-black bg-yellow-50">
+            <div className="mb-8">
+              <h2 className="font-comic text-3xl sm:text-5xl text-blue-600 mb-2 leading-none uppercase">GET YOUR MISSION QUOTE!</h2>
+              <p className="font-bold text-gray-500 italic uppercase text-sm">Instant Pricing. No Commitment.</p>
+            </div>
+
+            <form onSubmit={handleGetQuote} className="space-y-8">
+              {/* Zip & Phone */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">YOUR NAME</label>
+                  <label className="block font-comic text-xs uppercase mb-1">ZIP CODE</label>
                   <input
                     required
-                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold uppercase outline-none focus:bg-blue-50"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">EMAIL ADDRESS</label>
-                  <input
-                    required
-                    type="email"
-                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold outline-none focus:bg-blue-50"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                <div>
-                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">SERVICE ADDRESS</label>
-                  <input
-                    required
-                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold uppercase outline-none focus:bg-blue-50"
-                    value={formData.address}
-                    onChange={e => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="STREET ADDRESS"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold mb-0.5 text-[9px] uppercase opacity-60">ZIP / POSTAL CODE</label>
-                  <input
-                    required
-                    className="w-full border-2 border-black p-1.5 sm:p-2 text-xs sm:text-base font-bold uppercase outline-none focus:bg-blue-50"
+                    className="w-full border-4 border-black p-3 font-bold text-lg outline-none focus:bg-white"
                     value={formData.zip}
                     onChange={e => setFormData({ ...formData, zip: e.target.value })}
-                    placeholder="92691"
+                  />
+                </div>
+                <div>
+                  <label className="block font-comic text-xs uppercase mb-1">CELL PHONE</label>
+                  <input
+                    required
+                    type="tel"
+                    placeholder="(555) 000-0000"
+                    className="w-full border-4 border-black p-3 font-bold text-lg outline-none focus:bg-white"
+                    value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="p-2 sm:p-4 bg-yellow-101 border-2 border-dashed border-black">
-                <h4 className="font-comic text-[10px] sm:text-xl mb-1 sm:mb-3">MISSION DETAILS:</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[10px] sm:text-base">TOTAL DOGS:</span>
-                    <div className="flex items-center space-x-2">
-                      <button type="button" onClick={() => setFormData({ ...formData, dogs: Math.max(1, formData.dogs - 1) })} className="bg-black text-white w-6 h-6 font-bold text-xs">-</button>
-                      <span className="font-comic text-base sm:text-2xl w-4 text-center">{formData.dogs}</span>
-                      <button type="button" onClick={() => setFormData({ ...formData, dogs: formData.dogs + 1 })} className="bg-black text-white w-6 h-6 font-bold text-xs">+</button>
-                    </div>
-                  </div>
-                  <label className="flex items-center space-x-2 cursor-pointer pt-0.5">
+              {/* Dog Slider */}
+              <div>
+                <div className="flex justify-between items-end mb-2">
+                  <label className="font-comic text-sm uppercase">HOW MANY DOGS?</label>
+                  <span className="font-comic text-4xl text-red-600">{dogs}</span>
+                </div>
+                <input
+                  type="range" min="1" max="5" step="1"
+                  className="w-full h-4 bg-gray-200 border-2 border-black rounded-lg appearance-none cursor-pointer accent-red-600"
+                  value={dogs}
+                  onChange={e => setDogs(parseInt(e.target.value))}
+                />
+                <div className="flex justify-between text-[10px] font-bold mt-1 opacity-40">
+                  <span>1 DOG</span>
+                  <span>5+ DOGS</span>
+                </div>
+              </div>
+
+              {/* Frequency Slider */}
+              <div>
+                <div className="flex justify-between items-end mb-2">
+                  <label className="font-comic text-sm uppercase">CLEANUP FREQUENCY?</label>
+                  <span className="font-comic text-2xl text-blue-600">{selectedFreq.label}</span>
+                </div>
+                <input
+                  type="range" min="0" max="4" step="1"
+                  className="w-full h-4 bg-gray-200 border-2 border-black rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  value={freqIndex}
+                  onChange={e => setFreqIndex(parseInt(e.target.value))}
+                />
+                <div className="flex justify-between text-[10px] font-bold mt-1 opacity-40">
+                  <span>3X WEEKLY</span>
+                  <span>MONTHLY</span>
+                </div>
+              </div>
+
+              {!showSignup && (
+                <button
+                  type="submit"
+                  className="w-full py-5 bg-red-600 text-white font-comic text-3xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                >
+                  GET FREE QUOTE!
+                </button>
+              )}
+            </form>
+
+            {/* QUOTE RESULT AREA */}
+            {showSignup && (
+              <div className="mt-10 p-6 bg-white border-4 border-black border-dashed relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="absolute top-0 right-0 bg-red-600 text-white font-comic text-[10px] px-3 py-1 rotate-12 translate-x-3 -translate-y-1">
+                  FREE FIRST CLEANING!
+                </div>
+                <h3 className="font-comic text-xl mb-1 text-gray-500 uppercase">YOUR ESTIMATE:</h3>
+                <div className="flex items-baseline space-x-2">
+                  <span className="font-comic text-6xl text-blue-600">${quoteTotal}</span>
+                  <span className="font-bold text-gray-400">/ CLEANUP</span>
+                </div>
+                <p className="text-xs font-bold text-green-600 mt-2 uppercase">🛡️ 100% Satisfaction Guarantee Included</p>
+
+                <div className="mt-4 pt-4 border-t-2 border-black/10">
+                  <label className="flex items-center space-x-3 cursor-pointer group">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 border-2 border-black accent-blue-600"
+                      className="w-6 h-6 border-4 border-black rounded-none checked:bg-blue-600 accent-blue-600"
                       checked={formData.deodorizer}
                       onChange={e => setFormData({ ...formData, deodorizer: e.target.checked })}
                     />
-                    <span className="font-bold uppercase text-[9px] sm:text-base">ADD YARD DEODORIZER (+$6.25/WEEK)</span>
+                    <span className="font-bold text-sm uppercase group-hover:text-blue-600 transition-colors">Add Elite Yard Deodorizing (+$6.25)</span>
                   </label>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-3 sm:space-y-6">
-              <div className="p-3 sm:p-6 bg-green-50 border border-black/10">
-                <h3 className="font-comic text-base sm:text-2xl mb-2 sm:mb-4 text-green-700">MISSION SUMMARY:</h3>
-                <div className="space-y-1.5 sm:space-y-3 text-sm sm:text-lg">
-                  <div className="flex justify-between border-b border-black/10 pb-1.5">
-                    <span className="font-bold">{activePlan.name}</span>
-                    <span className="font-bold">${activePlan.price}</span>
+            )}
+          </div>
+
+          {/* RIGHT COLUMN: VSL & SIGNUP */}
+          <div className="p-6 sm:p-10 bg-white">
+
+            {/* VSL PLACEHOLDER */}
+            <div className="mb-10 aspect-[9/16] max-w-[280px] mx-auto bg-black border-4 border-black relative overflow-hidden group shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <div className="absolute inset-0 flex items-center justify-center text-white text-center p-6">
+                <div>
+                  <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                    <span className="text-2xl ml-1">▶</span>
                   </div>
-                  {formData.dogs > 1 && (
-                    <div className="flex justify-between border-b border-black/10 pb-1.5">
-                      <span>Extra Dogs ({formData.dogs - 1})</span>
-                      <span className="font-bold">${((formData.dogs - 1) * 2.5).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {formData.deodorizer && (
-                    <div className="flex justify-between border-b border-black/10 pb-1.5">
-                      <span>Yard Deodorizer</span>
-                      <span className="font-bold">$6.25</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-base sm:text-2xl font-comic pt-2 sm:pt-4">
-                    <span>WEEKLY TOTAL:</span>
-                    <span className="text-red-600">${total}</span>
-                  </div>
+                  <p className="font-comic text-xl uppercase leading-none mb-1">Watch Your Hero</p>
+                  <p className="text-[10px] font-bold opacity-60 uppercase">See how we secure your yard!</p>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <h4 className="font-bold text-[9px] sm:text-lg text-blue-700 uppercase">Optimize Your Protection:</h4>
-                {activePlan.id !== 'super-scooper' && (
-                  <button
-                    type="button"
-                    onClick={() => setActivePlan(PLANS[2])}
-                    className="w-full p-2 bg-red-600 text-white border-2 border-black hover:scale-[1.01] transition-all flex items-center justify-between group"
-                  >
-                    <div className="text-left">
-                      <p className="font-comic text-xs sm:text-lg leading-none">UPGRADE TO SUPER SCOOOPS</p>
-                      <p className="text-[8px] sm:text-[10px] font-bold opacity-80 uppercase leading-none mt-0.5">Maximum Defense (3 visits/week)</p>
-                    </div>
-                    <span className="text-base sm:text-xl group-hover:translate-x-1 transition-transform">🚀</span>
-                  </button>
-                )}
-                {activePlan.id !== 'hero' && (
-                  <button
-                    type="button"
-                    onClick={() => setActivePlan(PLANS[1])}
-                    className="w-full p-2 bg-blue-50 border-2 border-blue-600 hover:bg-blue-100 transition-colors flex items-center justify-between group"
-                  >
-                    <div className="text-left">
-                      <p className="font-bold text-blue-800 text-xs sm:text-sm">RECRUIT THE HERO PLAN</p>
-                      <p className="text-[8px] sm:text-[10px] font-bold text-blue-600 uppercase">Most Popular • $40/week</p>
-                    </div>
-                    <span className="bg-blue-600 text-white text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded">PROMO</span>
-                  </button>
-                )}
-              </div>
-
-              <p className="text-[10px] italic text-gray-600 text-center uppercase font-bold">No commitment! Cancel anytime.</p>
+              {/* This would be a <video> tag in production */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
             </div>
-          )}
 
-          <div className="mt-4 flex flex-col sm:flex-row gap-2">
-            {step === 2 && (
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex-1 py-2 font-comic text-sm sm:text-lg bg-gray-200 border-2 border-black hover:bg-gray-300 active:translate-y-1 transition-all"
-              >
-                GO BACK
-              </button>
+            {showSignup && (
+              <div id="signup-fields" className="space-y-6 animate-in fade-in duration-700">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-comic text-xs uppercase mb-1 text-blue-600">FULL NAME</label>
+                    <input
+                      required
+                      placeholder="HERO NAME"
+                      className="w-full border-b-4 border-black p-2 font-bold text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-comic text-xs uppercase mb-1 text-blue-600">EMAIL ADDRESS</label>
+                    <input
+                      required
+                      type="email"
+                      placeholder="HERO@GMAIL.COM"
+                      className="w-full border-b-4 border-black p-2 font-bold text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-comic text-xs uppercase mb-1 text-blue-600">SERVICE ADDRESS</label>
+                    <input
+                      required
+                      placeholder="123 JUSTICE WAY"
+                      className="w-full border-b-4 border-black p-2 font-bold text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                      value={formData.address}
+                      onChange={e => setFormData({ ...formData, address: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-6 space-y-4">
+                  <button
+                    onClick={handleActivate}
+                    className="w-full py-5 bg-blue-600 text-white font-comic text-2xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:scale-[1.02] active:translate-y-1 active:shadow-none transition-all"
+                  >
+                    ACTIVATE MISSION & PAY
+                  </button>
+                  <button
+                    onClick={() => alert("Redirecting to Question flow...")}
+                    className="w-full py-3 bg-white text-gray-400 font-bold text-xs border-2 border-gray-200 hover:border-black hover:text-black transition-all uppercase"
+                  >
+                    No thanks, I have a question first
+                  </button>
+                </div>
+
+                <p className="text-center text-[10px] font-bold text-gray-400 italic">
+                  * First clean free requires recurring service activation.
+                </p>
+              </div>
             )}
-            <button
-              type="submit"
-              className="flex-[2] py-2.5 sm:py-3 px-4 font-comic text-base sm:text-xl bg-red-600 text-white border-2 border-black hover:bg-red-700 active:scale-95 transition-all"
-            >
-              {step === 1 ? 'NEXT: REVIEW MISSION' : `ACTIVATE ${activePlan.id === 'hero' ? 'HERO' : 'MISSION'} SERVICE!`}
-            </button>
           </div>
-        </form>
+
+        </div>
       </div>
     </div>
   );

@@ -56,6 +56,14 @@ export const PLANS: ServicePlan[] = [
   }
 ];
 
+export const FREQUENCIES = [
+  { id: '3x-weekly', label: '3x Weekly', factor: 2.8 },
+  { id: '2x-weekly', label: '2x Weekly', factor: 2.0 },
+  { id: 'weekly', label: 'Weekly', factor: 1.0 },
+  { id: 'bi-weekly', label: 'Bi-Weekly', factor: 0.7 },
+  { id: 'monthly', label: 'Monthly', factor: 0.4 }
+];
+
 export const ADD_ONS: AddOn[] = [
   { id: 'extra-dog', name: 'Extra Dog Protection', price: 2.50, unit: '/week each' },
   { id: 'deodorizer', name: 'Yard Deodorizing', price: 6.25, unit: '/week' }
