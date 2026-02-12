@@ -145,11 +145,11 @@ const App: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             <div className="flex justify-between items-center p-4 bg-gray-50 border-2 border-black border-dashed">
               <span className="font-bold uppercase">Extra Dog Protection</span>
-              <span className="font-comic text-2xl text-[#E60000]">+$10/mo</span>
+              <span className="font-comic text-2xl text-[#E60000]">+$2.50/week</span>
             </div>
             <div className="flex justify-between items-center p-4 bg-gray-50 border-2 border-black border-dashed">
               <span className="font-bold uppercase">Elite Yard Deodorizer</span>
-              <span className="font-comic text-2xl text-[#E60000]">+$25/mo</span>
+              <span className="font-comic text-2xl text-[#E60000]">+$6.25/week</span>
             </div>
           </div>
         </div>

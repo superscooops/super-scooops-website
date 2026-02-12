@@ -20,7 +20,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     deodorizer: false
   });
 
-  const total = activePlan.price + (formData.dogs > 1 ? (formData.dogs - 1) * 10 : 0) + (formData.deodorizer ? 25 : 0);
+  const total = (activePlan.price + (formData.dogs > 1 ? (formData.dogs - 1) * 2.5 : 0) + (formData.deodorizer ? 6.25 : 0)).toFixed(2);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,67 +29,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     if (step < 2) {
       setStep(2);
     } else {
-      setIsSubmitting(true);
-      try {
-        const response = await fetch('/.netlify/functions/submit-booking', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...formData,
-            planId: activePlan.id,
-            planName: activePlan.name,
-            totalPrice: total
-          })
-        });
-
-        if (!response.ok) {
-          const rawText = await response.text().catch(() => 'No response body');
-          let errorMessage = 'Server Error';
-          try {
-            const errorData = JSON.parse(rawText);
-            errorMessage = errorData.error || errorData.message || rawText;
-          } catch {
-            errorMessage = rawText;
-          }
-          throw new Error(`CRM ERROR (Status ${response.status}): ${errorMessage}`);
-        }
-
-        const result = await response.json().catch(() => ({}));
-
-        // 2. Now Trigger Stripe Checkout
-        const checkoutResponse = await fetch('/.netlify/functions/create-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...formData,
-            planId: activePlan.id,
-            planName: activePlan.name
-          })
-        });
-
-        if (!checkoutResponse.ok) {
-          const rawText = await checkoutResponse.text().catch(() => 'No response body');
-          throw new Error(`STRIPE ERROR (Status ${checkoutResponse.status}): ${rawText}`);
-        }
-
-        const { url } = await checkoutResponse.json();
-
-        // Redirect to Stripe
-        console.log('Redirecting to Stripe:', url);
-        window.location.href = url;
-
-      } catch (error: any) {
-        console.error('CRITICAL ERROR DURING BOOKING:', error);
-
-        // Check for common local dev issues
-        if (window.location.hostname === 'localhost' && !error.message.includes('fetch')) {
-          alert("LOCAL DEV DETECTED: To test payments locally, you MUST use 'netlify dev' instead of 'npm run dev'. Functions will 404 otherwise!");
-        } else {
-          alert(`ZAP! ${error.message || 'Something went wrong.'}\n\nCheck your browser console for details or ensure your Netlify environment variables are set!`);
-        }
-      } finally {
-        setIsSubmitting(false);
-      }
+      // Direct redirect to Sweep & Go Registration
+      window.open('https://client.sweepandgo.com/super-scooops-qhnjn/register', '_blank');
+      onClose();
     }
   };
 
@@ -173,7 +115,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                       checked={formData.deodorizer}
                       onChange={e => setFormData({ ...formData, deodorizer: e.target.checked })}
                     />
-                    <span className="font-bold uppercase text-[9px] sm:text-base">ADD YARD DEODORIZER (+$25)</span>
+                    <span className="font-bold uppercase text-[9px] sm:text-base">ADD YARD DEODORIZER (+$6.25/WEEK)</span>
                   </label>
                 </div>
               </div>
@@ -190,17 +132,17 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                   {formData.dogs > 1 && (
                     <div className="flex justify-between border-b border-black/10 pb-1.5">
                       <span>Extra Dogs ({formData.dogs - 1})</span>
-                      <span className="font-bold">${(formData.dogs - 1) * 10}</span>
+                      <span className="font-bold">${((formData.dogs - 1) * 2.5).toFixed(2)}</span>
                     </div>
                   )}
                   {formData.deodorizer && (
                     <div className="flex justify-between border-b border-black/10 pb-1.5">
                       <span>Yard Deodorizer</span>
-                      <span className="font-bold">$25</span>
+                      <span className="font-bold">$6.25</span>
                     </div>
                   )}
                   <div className="flex justify-between text-base sm:text-2xl font-comic pt-2 sm:pt-4">
-                    <span>MONTHLY TOTAL:</span>
+                    <span>WEEKLY TOTAL:</span>
                     <span className="text-red-600">${total}</span>
                   </div>
                 </div>
@@ -229,7 +171,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                   >
                     <div className="text-left">
                       <p className="font-bold text-blue-800 text-xs sm:text-sm">RECRUIT THE HERO PLAN</p>
-                      <p className="text-[8px] sm:text-[10px] font-bold text-blue-600 uppercase">Most Popular • $160/mo</p>
+                      <p className="text-[8px] sm:text-[10px] font-bold text-blue-600 uppercase">Most Popular • $40/week</p>
                     </div>
                     <span className="bg-blue-600 text-white text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded">PROMO</span>
                   </button>
@@ -252,10 +194,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
             )}
             <button
               type="submit"
-              disabled={isSubmitting}
-              className={`flex-[2] py-2.5 sm:py-3 px-4 font-comic text-base sm:text-xl bg-red-600 text-white border-2 border-black hover:bg-red-700 active:scale-95 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="flex-[2] py-2.5 sm:py-3 px-4 font-comic text-base sm:text-xl bg-red-600 text-white border-2 border-black hover:bg-red-700 active:scale-95 transition-all"
             >
-              {step === 1 ? 'NEXT: REVIEW MISSION' : (isSubmitting ? 'SENDING TO HQ...' : `ACTIVATE ${activePlan.id === 'hero' ? 'HERO' : 'MISSION'} SERVICE!`)}
+              {step === 1 ? 'NEXT: REVIEW MISSION' : `ACTIVATE ${activePlan.id === 'hero' ? 'HERO' : 'MISSION'} SERVICE!`}
             </button>
           </div>
         </form>

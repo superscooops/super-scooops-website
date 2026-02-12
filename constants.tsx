@@ -14,7 +14,7 @@ export const PLANS: ServicePlan[] = [
   {
     id: 'sidekick',
     name: 'The Sidekick Plan',
-    price: 80,
+    price: 20,
     frequency: '1x per week cleanup',
     description: 'Perfect for the Lone Wolf',
     features: [
@@ -28,7 +28,7 @@ export const PLANS: ServicePlan[] = [
   {
     id: 'hero',
     name: 'The Hero Plan',
-    price: 160,
+    price: 40,
     frequency: '2x per week cleanup',
     description: 'Our Most Popular Defense',
     features: [
@@ -43,7 +43,7 @@ export const PLANS: ServicePlan[] = [
   {
     id: 'super-scooper',
     name: 'The Super Scooops Plan',
-    price: 225,
+    price: 56,
     frequency: '3x per week cleanup',
     description: 'For the Full Pack',
     features: [
@@ -57,8 +57,8 @@ export const PLANS: ServicePlan[] = [
 ];
 
 export const ADD_ONS: AddOn[] = [
-  { id: 'extra-dog', name: 'Extra Dog Protection', price: 10, unit: '/month each' },
-  { id: 'deodorizer', name: 'Yard Deodorizing', price: 25, unit: '/month' }
+  { id: 'extra-dog', name: 'Extra Dog Protection', price: 2.50, unit: '/week each' },
+  { id: 'deodorizer', name: 'Yard Deodorizing', price: 6.25, unit: '/week' }
 ];
 
 export const ICONS = {
