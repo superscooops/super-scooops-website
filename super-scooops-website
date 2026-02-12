@@ -1,0 +1,3 @@
+git remote add origin https://github.com/superscooops/super-scooops-website.git
+git branch -M main
+git push -u origin main
