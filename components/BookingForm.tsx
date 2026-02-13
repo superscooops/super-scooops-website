@@ -15,6 +15,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   const [showSignup, setShowSignup] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [clientCreated, setClientCreated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -76,19 +78,23 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     }
 
     setIsSubmitting(true);
+    setIsCreatingClient(true);
     setError(null);
+    setClientCreated(false);
 
     try {
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) throw new Error("Card element not found");
 
+      // Step 1: Create Stripe token
       const { token, error: stripeError } = await stripe.createToken(cardElement as any);
       if (stripeError) {
         throw new Error(`STRIPE: ${stripeError.message}`);
       }
 
-      // Send to our Netlify function
-      const response = await fetch('/.netlify/functions/submit-booking', {
+      // Step 2: Create client in Sweep&GO
+      setIsCreatingClient(true);
+      const clientResponse = await fetch('/.netlify/functions/create-sweep-client', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,24 +108,38 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
         })
       });
 
-      if (!response.ok) {
-        let errorMessage = 'CRM: submission failed';
-        const responseText = await response.text(); // Read stream once
+      if (!clientResponse.ok) {
+        let errorMessage = 'Failed to create client in Sweep&GO';
+        const responseText = await clientResponse.text();
         try {
           const err = JSON.parse(responseText);
           errorMessage = err.error || errorMessage;
         } catch (e) {
-          // If JSON parsing fails, use the raw text or status
-          errorMessage = responseText || `Error ${response.status}: ${response.statusText}`;
+          errorMessage = responseText || `Error ${clientResponse.status}: ${clientResponse.statusText}`;
         }
         throw new Error(errorMessage);
       }
 
-      // Success!
-      window.location.href = '/success.html';
+      const clientResult = await clientResponse.json();
+      
+      if (!clientResult.success) {
+        throw new Error(clientResult.error || 'Failed to create client');
+      }
+
+      // Client created successfully!
+      setClientCreated(true);
+      setIsCreatingClient(false);
+
+      // Small delay to show success state, then redirect
+      setTimeout(() => {
+        window.location.href = '/success.html';
+      }, 1500);
+
     } catch (err: any) {
       setError(err.message);
       setIsSubmitting(false);
+      setIsCreatingClient(false);
+      setClientCreated(false);
     }
   };
 
@@ -130,29 +150,45 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     }
 
     setIsSubmitting(true);
+    setIsCreatingClient(true);
     setError(null);
     try {
-      const response = await fetch('/.netlify/functions/submit-booking', {
+      const response = await fetch('/.netlify/functions/create-sweep-client', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           isLeadOnly: true,
           planId: selectedPlan.id,
+          planName: selectedPlan.name,
           dogs,
           totalPrice: quoteTotal
         })
       });
 
       if (!response.ok) {
-        throw new Error("Mission failed to sync. Try again?");
+        let errorMessage = 'Failed to submit question';
+        const responseText = await response.text();
+        try {
+          const err = JSON.parse(responseText);
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          errorMessage = responseText || `Error ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to submit question');
       }
 
       alert("Mission Question Sent! We'll fly into your inbox soon.");
       onClose();
     } catch (err: any) {
-      setError("Could not send question. Try again?");
+      setError(err.message || "Could not send question. Try again?");
       setIsSubmitting(false);
+      setIsCreatingClient(false);
     }
   };
 
@@ -414,19 +450,42 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                     </div>
                   )}
 
+                  {/* Success State */}
+                  {clientCreated && (
+                    <div className="p-4 bg-green-100 border-4 border-green-600 text-green-800 font-bold text-sm uppercase animate-in fade-in slide-in-from-top-4 duration-500">
+                      ✅ CLIENT CREATED SUCCESSFULLY! Redirecting...
+                    </div>
+                  )}
+
+                  {/* Error State */}
                   {error && (
                     <div className="p-2 bg-red-100 border-2 border-red-600 text-red-600 font-bold text-xs uppercase animate-pulse">
                       ⚠️ {error}
                     </div>
                   )}
 
+                  {/* Loading State */}
+                  {isCreatingClient && (
+                    <div className="p-3 bg-blue-50 border-2 border-blue-600 text-blue-800 font-bold text-xs uppercase">
+                      🚀 Creating your account in Sweep&GO...
+                    </div>
+                  )}
+
                   <div className="pt-4 sm:pt-6 space-y-3 sm:space-y-4">
                     <button
                       onClick={handleActivate}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isCreatingClient || clientCreated}
                       className="w-full py-4 sm:py-5 bg-blue-600 text-white font-comic text-xl sm:text-2xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:scale-[1.02] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale"
                     >
-                      {isSubmitting ? 'DEPLOYING...' : showPayment ? 'FINALIZE & ACTIVATE' : 'CLAIM FREE SCOOOP'}
+                      {clientCreated 
+                        ? '✅ SUCCESS!' 
+                        : isCreatingClient 
+                        ? 'CREATING CLIENT...' 
+                        : isSubmitting 
+                        ? 'PROCESSING...' 
+                        : showPayment 
+                        ? 'FINALIZE & ACTIVATE' 
+                        : 'CLAIM FREE SCOOOP'}
                     </button>
                     {!showPayment && (
                       <button
