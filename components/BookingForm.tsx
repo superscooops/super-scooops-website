@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { ServicePlan } from '../types';
 import { PLANS, FREQUENCIES } from '../constants';
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 
 interface BookingFormProps {
   selectedPlan: ServicePlan;
@@ -12,6 +13,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   const [dogs, setDogs] = useState(1);
   const [freqIndex, setFreqIndex] = useState(2); // Default to Weekly
   const [showSignup, setShowSignup] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -42,9 +46,88 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     }, 100);
   };
 
-  const handleActivate = () => {
-    window.open('https://client.sweepandgo.com/super-scooops-qhnjn/register', '_blank');
-    onClose();
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const handleActivate = async () => {
+    if (!stripe || !elements) return;
+
+    if (!showPayment) {
+      if (!formData.name || !formData.email || !formData.address) {
+        setError("Please fill in all hero details!");
+        return;
+      }
+      setShowPayment(true);
+      setError(null);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error("Card element not found");
+
+      const { token, error: stripeError } = await stripe.createToken(cardElement as any);
+      if (stripeError) {
+        throw new Error(stripeError.message);
+      }
+
+      // Send to our Netlify function
+      const response = await fetch('/.netlify/functions/submit-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          stripeToken: token.id,
+          planId: selectedPlan.id,
+          planName: selectedPlan.name,
+          dogs,
+          frequencyId: selectedFreq.id,
+          totalPrice: quoteTotal
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'CRM submission failed');
+      }
+
+      // Success!
+      window.location.href = '/success.html';
+    } catch (err: any) {
+      setError(err.message);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleQuestion = async () => {
+    if (!formData.email || !formData.phone) {
+      setError("Please add phone & email so we can answer you!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await fetch('/.netlify/functions/submit-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          isLeadOnly: true,
+          planId: selectedPlan.id,
+          dogs,
+          totalPrice: quoteTotal
+        })
+      });
+      alert("Mission Question Sent! We'll fly into your inbox soon.");
+      onClose();
+    } catch (err: any) {
+      setError("Could not send question. Try again?");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -93,49 +176,44 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                 </div>
               </div>
 
-              {/* Dog Slider */}
+              {/* Dog Selection Buttons */}
               <div className="relative">
-                <div className="flex justify-between items-end mb-1 sm:mb-2">
-                  <label className="font-comic text-[10px] sm:text-sm uppercase text-gray-400">HOW MANY DOGS?</label>
-                  <span className="font-comic text-2xl sm:text-4xl text-red-600 leading-none">{dogs}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xl animate-pulse text-gray-300">◀</span>
-                  <input
-                    type="range" min="1" max="5" step="1"
-                    className="flex-grow h-3 sm:h-5 bg-gray-200 border-2 border-black rounded-lg appearance-none cursor-pointer accent-red-600 sm:accent-red-600"
-                    value={dogs}
-                    onChange={e => setDogs(parseInt(e.target.value))}
-                  />
-                  <span className="text-xl animate-pulse text-gray-300">▶</span>
-                </div>
-                <div className="flex justify-between text-[8px] font-bold mt-1 uppercase text-gray-400">
-                  <span>DRAG LEFT</span>
-                  <span className="text-blue-600 animate-bounce">← SLIDE TO ADJUST →</span>
-                  <span>DRAG RIGHT</span>
+                <label className="block font-comic text-[10px] sm:text-sm uppercase text-gray-400 mb-2">HOW MANY DOGS?</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {[1, 2, 3, 4, 5].map(num => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setDogs(num)}
+                      className={`py-3 sm:py-4 font-comic text-xl sm:text-2xl border-2 sm:border-4 border-black transition-all ${dogs === num
+                        ? 'bg-red-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5'
+                        : 'bg-white text-black hover:bg-gray-100'
+                        }`}
+                    >
+                      {num}{num === 5 ? '+' : ''}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Frequency Slider */}
+              {/* Frequency Selection Buttons */}
               <div className="relative">
-                <div className="flex justify-between items-end mb-1 sm:mb-2">
-                  <label className="font-comic text-[10px] sm:text-sm uppercase text-gray-400">CLEANUP FREQUENCY?</label>
-                  <span className="font-comic text-lg sm:text-2xl text-blue-600 leading-none">{selectedFreq.label}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xl animate-pulse text-gray-300">◀</span>
-                  <input
-                    type="range" min="0" max="4" step="1"
-                    className="flex-grow h-3 sm:h-5 bg-gray-200 border-2 border-black rounded-lg appearance-none cursor-pointer accent-blue-600 sm:accent-blue-600"
-                    value={freqIndex}
-                    onChange={e => setFreqIndex(parseInt(e.target.value))}
-                  />
-                  <span className="text-xl animate-pulse text-gray-300">▶</span>
-                </div>
-                <div className="flex justify-between text-[8px] font-bold mt-1 uppercase text-gray-400">
-                  <span>HIGH FREQUENCY</span>
-                  <span className="text-blue-600 animate-bounce">← SLIDE TO ADJUST →</span>
-                  <span>LOW FREQUENCY</span>
+                <label className="block font-comic text-[10px] sm:text-sm uppercase text-gray-400 mb-2">CLEANUP FREQUENCY?</label>
+                <div className="space-y-2">
+                  {FREQUENCIES.map((freq, idx) => (
+                    <button
+                      key={freq.id}
+                      type="button"
+                      onClick={() => setFreqIndex(idx)}
+                      className={`w-full p-3 sm:p-4 text-left border-2 sm:border-4 border-black transition-all flex justify-between items-center ${freqIndex === idx
+                        ? 'bg-blue-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5'
+                        : 'bg-white text-black hover:bg-gray-100'
+                        }`}
+                    >
+                      <span className="font-comic text-sm sm:text-lg uppercase">{freq.label}</span>
+                      {freqIndex === idx && <span className="text-xl">🛡️</span>}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -180,79 +258,119 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
           {/* RIGHT COLUMN: VSL & SIGNUP */}
           <div className="p-4 sm:p-10 bg-white">
 
-            {/* VSL PLACEHOLDER */}
-            <div className="mb-6 sm:mb-10 aspect-[9/16] max-w-[200px] sm:max-w-[280px] mx-auto bg-black border-4 border-black relative overflow-hidden group shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-              <div className="absolute inset-0 flex items-center justify-center text-white text-center p-4">
-                <div>
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-4 animate-pulse">
-                    <span className="text-xl sm:text-2xl ml-1">▶</span>
+            {/* REGISTRATION FLOW */}
+            <div className="flex flex-col h-full justify-center">
+              {!showSignup && (
+                <div className="text-center py-12 animate-in fade-in duration-700">
+                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="text-4xl">🐾</span>
                   </div>
-                  <p className="font-comic text-lg sm:text-xl uppercase leading-none mb-1">Watch Your Hero</p>
-                  <p className="text-[8px] sm:text-[10px] font-bold opacity-60 uppercase">See how we secure your yard!</p>
+                  <h3 className="font-comic text-2xl sm:text-3xl mb-4 uppercase">Ready to Deploy?</h3>
+                  <p className="font-bold text-gray-500 uppercase text-sm mb-8 px-4">
+                    Complete your quote tools on the left to see your mission price and activate your first free scoop!
+                  </p>
+                  <div className="flex justify-center -space-x-3">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <img key={i} src={`https://picsum.photos/seed/dog${i}/100/100`} className="w-12 h-12 rounded-full border-4 border-white shadow-lg" alt="happy hound" />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              {/* This would be a <video> tag in production */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+              )}
+
+              {showSignup && (
+                <div id="signup-fields" className="space-y-4 sm:space-y-6 animate-in fade-in duration-700">
+                  {!showPayment ? (
+                    <div className="space-y-3 sm:space-y-4">
+                      <div>
+                        <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">FULL NAME</label>
+                        <input
+                          required
+                          placeholder="HERO NAME"
+                          className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                          value={formData.name}
+                          onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">EMAIL ADDRESS</label>
+                        <input
+                          required
+                          type="email"
+                          placeholder="HERO@GMAIL.COM"
+                          className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                          value={formData.email}
+                          onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">SERVICE ADDRESS</label>
+                        <input
+                          required
+                          placeholder="123 JUSTICE WAY"
+                          className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                          value={formData.address}
+                          onChange={e => setFormData({ ...formData, address: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
+                      <div className="bg-blue-50 p-4 border-2 border-blue-600 rounded-xl">
+                        <h4 className="font-comic text-xs text-blue-800 uppercase mb-2">Secure Mission Payment:</h4>
+                        <div className="bg-white p-3 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                          <CardElement options={{
+                            style: {
+                              base: {
+                                fontSize: '16px',
+                                color: '#424770',
+                                '::placeholder': { color: '#aab7c4' },
+                              },
+                            },
+                          }} />
+                        </div>
+                        <p className="text-[8px] font-bold text-blue-600 mt-2 uppercase tracking-tighter italic">🛡️ encrypted & secure via Stripe</p>
+                      </div>
+                      <button
+                        onClick={() => setShowPayment(false)}
+                        className="text-[10px] font-bold text-gray-400 hover:text-black uppercase underline"
+                      >
+                        ← Back to details
+                      </button>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="p-2 bg-red-100 border-2 border-red-600 text-red-600 font-bold text-xs uppercase animate-pulse">
+                      ⚠️ {error}
+                    </div>
+                  )}
+
+                  <div className="pt-4 sm:pt-6 space-y-3 sm:space-y-4">
+                    <button
+                      onClick={handleActivate}
+                      disabled={isSubmitting}
+                      className="w-full py-4 sm:py-5 bg-blue-600 text-white font-comic text-xl sm:text-2xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:scale-[1.02] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale"
+                    >
+                      {isSubmitting ? 'DEPLOYING...' : showPayment ? 'FINALIZE & ACTIVATE' : 'ACTIVATE MISSION & PAY'}
+                    </button>
+                    {!showPayment && (
+                      <button
+                        onClick={handleQuestion}
+                        disabled={isSubmitting}
+                        className="w-full py-2 bg-white text-gray-400 font-bold text-[8px] sm:text-xs border-2 border-gray-200 hover:border-black hover:text-black transition-all uppercase"
+                      >
+                        No thanks, I have a question first
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-center text-[10px] font-bold text-gray-400 italic">
+                    * First clean free requires recurring service activation.
+                  </p>
+                </div>
+              )}
             </div>
-
-            {showSignup && (
-              <div id="signup-fields" className="space-y-4 sm:space-y-6 animate-in fade-in duration-700">
-                <div className="space-y-3 sm:space-y-4">
-                  <div>
-                    <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">FULL NAME</label>
-                    <input
-                      required
-                      placeholder="HERO NAME"
-                      className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
-                      value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">EMAIL ADDRESS</label>
-                    <input
-                      required
-                      type="email"
-                      placeholder="HERO@GMAIL.COM"
-                      className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
-                      value={formData.email}
-                      onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">SERVICE ADDRESS</label>
-                    <input
-                      required
-                      placeholder="123 JUSTICE WAY"
-                      className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
-                      value={formData.address}
-                      onChange={e => setFormData({ ...formData, address: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 sm:pt-6 space-y-3 sm:space-y-4">
-                  <button
-                    onClick={handleActivate}
-                    className="w-full py-4 sm:py-5 bg-blue-600 text-white font-comic text-xl sm:text-2xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:scale-[1.02] active:translate-y-1 active:shadow-none transition-all"
-                  >
-                    ACTIVATE MISSION & PAY
-                  </button>
-                  <button
-                    onClick={() => alert("Redirecting to Question flow...")}
-                    className="w-full py-2 bg-white text-gray-400 font-bold text-[8px] sm:text-xs border-2 border-gray-200 hover:border-black hover:text-black transition-all uppercase"
-                  >
-                    No thanks, I have a question first
-                  </button>
-                </div>
-
-                <p className="text-center text-[10px] font-bold text-gray-400 italic">
-                  * First clean free requires recurring service activation.
-                </p>
-              </div>
-            )}
           </div>
-
         </div>
       </div>
     </div>
