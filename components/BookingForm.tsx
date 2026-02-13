@@ -22,9 +22,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     name: '',
     email: '',
     address: '',
+    city: '',
+    state: '',
     zip: '92691',
     phone: '',
-    deodorizer: null,
+    deodorizer: null as string | null,
     preferredDay: 'Monday'
   });
 
@@ -68,8 +70,18 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     if (!stripe || !elements) return;
 
     if (!showPayment) {
-      if (!formData.name || !formData.email || !formData.address) {
-        setError("Please fill in all hero details!");
+      const checks: [string, string][] = [
+        [formData.name.trim(), 'Name'],
+        [formData.email.trim(), 'Email'],
+        [formData.phone.trim(), 'Phone'],
+        [formData.address.trim(), 'Street address'],
+        [formData.city.trim(), 'City'],
+        [formData.state.trim(), 'State'],
+        [formData.zip.trim(), 'ZIP code'],
+      ];
+      const missing = checks.filter(([val]) => !val).map(([, label]) => label);
+      if (missing.length) {
+        setError(`Please fill in all hero details: ${missing.join(', ')}`);
         return;
       }
       setShowPayment(true);
@@ -387,7 +399,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                         />
                       </div>
                       <div>
-                        <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">SERVICE ADDRESS</label>
+                        <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">STREET ADDRESS</label>
                         <input
                           required
                           placeholder="123 JUSTICE WAY"
@@ -395,6 +407,29 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                           value={formData.address}
                           onChange={e => setFormData({ ...formData, address: e.target.value })}
                         />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                          <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">CITY</label>
+                          <input
+                            required
+                            placeholder="IRVINE"
+                            className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                            value={formData.city}
+                            onChange={e => setFormData({ ...formData, city: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">STATE</label>
+                          <input
+                            required
+                            placeholder="CA"
+                            maxLength={2}
+                            className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase"
+                            value={formData.state}
+                            onChange={e => setFormData({ ...formData, state: e.target.value.toUpperCase().slice(0, 2) })}
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">PREFERRED SERVICE DAY</label>

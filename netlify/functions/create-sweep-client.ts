@@ -1,11 +1,13 @@
 import type { Handler } from '@netlify/functions';
 
 interface CreateClientRequest {
-    // Required fields
+    // Required fields (Sweep&GO onboarding requires these)
     name: string;
     email: string;
     phone: string;
     address: string;
+    city: string;
+    state: string;
     zip: string;
     
     // Service details
@@ -44,12 +46,22 @@ const handler: Handler = async (event): Promise<{ statusCode: number; body: stri
     try {
         const data: CreateClientRequest = JSON.parse(event.body || '{}');
 
-        // Basic Validation
-        if (!data.name || !data.email || !data.address) {
+        // Basic Validation (match Sweep&GO required fields)
+        const required: { key: keyof CreateClientRequest; label: string }[] = [
+            { key: 'name', label: 'name' },
+            { key: 'email', label: 'email' },
+            { key: 'phone', label: 'phone' },
+            { key: 'address', label: 'address' },
+            { key: 'city', label: 'city' },
+            { key: 'state', label: 'state' },
+            { key: 'zip', label: 'ZIP code' },
+        ];
+        const missing = required.filter(({ key }) => !data[key] || String(data[key]).trim() === '');
+        if (missing.length) {
             return {
                 statusCode: 400,
                 body: JSON.stringify({ 
-                    error: 'Missing required fields: name, email, and address are required' 
+                    error: `Missing required fields: ${missing.map(m => m.label).join(', ')}` 
                 })
             };
         }
@@ -77,9 +89,11 @@ const handler: Handler = async (event): Promise<{ statusCode: number; body: stri
                 organization: ORG_SLUG,
                 name: data.name,
                 address: data.address,
+                city: data.city,
+                state: data.state,
                 email_address: data.email,
-                phone: data.phone || '',
-                zip_code: data.zip || '',
+                phone: data.phone,
+                zip_code: data.zip,
                 comment: `QUESTION FROM RECRUIT:
 Plan: ${data.planName || 'Not specified'}
 Dogs: ${data.dogs || 1}
@@ -151,9 +165,11 @@ Preferred Day: ${data.preferredDay || 'Not specified'}`,
             first_name: firstName,
             last_name: lastName,
             email: data.email,
-            cell_phone_number: data.phone || '',
+            cell_phone_number: data.phone,
             home_address: data.address,
-            zip_code: data.zip || '',
+            city: data.city,
+            state: data.state,
+            zip_code: data.zip,
             cross_sell_id: data.planId ? `pkg_${data.planId}` : undefined,
             cross_sell_name: data.planName || 'Standard Plan',
             clean_up_frequency: freqMap[data.frequencyId || 'weekly'] || 'once_a_week',
