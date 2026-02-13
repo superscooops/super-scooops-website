@@ -19,6 +19,9 @@
     "@netlify/functions": "^5.1.2",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "express": "^5.2.1",
+    "netlify-cli": "^23.15.1",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

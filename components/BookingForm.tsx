@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { ServicePlan } from '../types';
-import { PLANS, FREQUENCIES } from '../constants';
+import { PLANS, FREQUENCIES, DEODORIZER_OPTIONS } from '../constants';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 
 interface BookingFormProps {
@@ -22,20 +22,33 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     address: '',
     zip: '92691',
     phone: '',
-    deodorizer: false
+    deodorizer: null,
+    preferredDay: 'Monday'
   });
+
 
   const selectedFreq = FREQUENCIES[freqIndex];
 
   // Dynamic Pricing Calculation
   const quoteTotal = useMemo(() => {
-    const basePrice = 20; // Base weekly price for 1 dog 1x weekly
-    const dogUpsell = (dogs - 1) * 2.50;
-    const deodorizerPrice = formData.deodorizer ? 6.25 : 0;
+    // Determine number of cleanings per week
+    const cleansPerWeek = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
 
-    // Total * Frequency Factor
-    return ((basePrice + dogUpsell + deodorizerPrice) * selectedFreq.factor).toFixed(2);
-  }, [dogs, freqIndex, formData.deodorizer]);
+    // Base Weekly Price (using $20 base floor)
+    const baseWeekly = 20 * cleansPerWeek;
+
+    // Extras (weekly)
+    const dogWeekly = Math.max(0, dogs - 1) * 2.50;
+    const deodorizerWeekly = formData.deodorizer
+      ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price || 0
+      : 0;
+
+    // Apply Factor and calculate PER CLEANUP
+    const weeklyTotal = (baseWeekly + dogWeekly + deodorizerWeekly) * selectedFreq.factor;
+    const perCleanup = Math.round((weeklyTotal / cleansPerWeek) * 100) / 100;
+
+    return perCleanup.toFixed(2);
+  }, [dogs, freqIndex, formData.deodorizer, selectedFreq]);
 
   const handleGetQuote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +84,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
 
       const { token, error: stripeError } = await stripe.createToken(cardElement as any);
       if (stripeError) {
-        throw new Error(stripeError.message);
+        throw new Error(`STRIPE: ${stripeError.message}`);
       }
 
       // Send to our Netlify function
@@ -90,8 +103,16 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'CRM submission failed');
+        let errorMessage = 'CRM: submission failed';
+        const responseText = await response.text(); // Read stream once
+        try {
+          const err = JSON.parse(responseText);
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use the raw text or status
+          errorMessage = responseText || `Error ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       // Success!
@@ -111,7 +132,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await fetch('/.netlify/functions/submit-booking', {
+      const response = await fetch('/.netlify/functions/submit-booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -122,6 +143,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
           totalPrice: quoteTotal
         })
       });
+
+      if (!response.ok) {
+        throw new Error("Mission failed to sync. Try again?");
+      }
+
       alert("Mission Question Sent! We'll fly into your inbox soon.");
       onClose();
     } catch (err: any) {
@@ -147,8 +173,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
           {/* LEFT COLUMN: THE QUOTE TOOL */}
           <div className="p-4 sm:p-10 border-r-0 lg:border-r-4 border-black bg-yellow-50">
             <div className="mb-4 sm:mb-8 text-center sm:text-left">
-              <h2 className="font-comic text-2xl sm:text-5xl text-blue-600 mb-1 leading-none uppercase">GET YOUR MISSION QUOTE!</h2>
-              <p className="font-bold text-gray-500 italic uppercase text-[10px] sm:text-sm">Instant Pricing. No Commitment.</p>
+              <h2 className="font-comic text-2xl sm:text-4xl text-blue-600 mb-1 leading-none uppercase">GET YOUR MISSION QUOTE!</h2>
+              <p className="font-bold text-gray-500 italic uppercase text-[10px] sm:text-xs">Instant Pricing. No Commitment.</p>
             </div>
 
             <form onSubmit={handleGetQuote} className="space-y-4 sm:space-y-8">
@@ -185,7 +211,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                       key={num}
                       type="button"
                       onClick={() => setDogs(num)}
-                      className={`py-3 sm:py-4 font-comic text-xl sm:text-2xl border-2 sm:border-4 border-black transition-all ${dogs === num
+                      className={`py-2 sm:py-4 font-comic text-xl sm:text-2xl border-2 sm:border-4 border-black transition-all ${dogs === num
                         ? 'bg-red-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5'
                         : 'bg-white text-black hover:bg-gray-100'
                         }`}
@@ -205,7 +231,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                       key={freq.id}
                       type="button"
                       onClick={() => setFreqIndex(idx)}
-                      className={`w-full p-3 sm:p-4 text-left border-2 sm:border-4 border-black transition-all flex justify-between items-center ${freqIndex === idx
+                      className={`w-full p-2.5 sm:p-4 text-left border-2 sm:border-4 border-black transition-all flex justify-between items-center ${freqIndex === idx
                         ? 'bg-blue-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] -translate-y-0.5'
                         : 'bg-white text-black hover:bg-gray-100'
                         }`}
@@ -220,7 +246,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
               {!showSignup && (
                 <button
                   type="submit"
-                  className="w-full py-4 sm:py-5 bg-red-600 text-white font-comic text-xl sm:text-3xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all active:scale-95"
+                  className="w-full py-3 sm:py-5 bg-red-600 text-white font-comic text-xl sm:text-3xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all active:scale-95"
                 >
                   GET FREE QUOTE!
                 </button>
@@ -229,27 +255,49 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
 
             {/* QUOTE RESULT AREA */}
             {showSignup && (
-              <div className="mt-6 sm:mt-10 p-4 sm:p-6 bg-white border-4 border-black border-dashed relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="absolute top-0 right-0 bg-red-600 text-white font-comic text-[8px] sm:text-[10px] px-2 sm:px-3 py-1 rotate-12 translate-x-1 sm:translate-x-3 -translate-y-1">
-                  FREE FIRST CLEANING!
+              <div className="mt-6 sm:mt-10 p-4 sm:p-6 bg-white border-4 border-black border-dashed relative animate-in fade-in slide-in-from-top-4 duration-500 overflow-hidden">
+                <div className="absolute top-4 -right-10 bg-red-600 text-white font-comic text-[8px] sm:text-[10px] w-40 py-1 rotate-[25deg] shadow-lg text-center z-10 border-b-2 border-black/20">
+                  FREE FIRST SCOOOP!
                 </div>
                 <h3 className="font-comic text-sm sm:text-xl mb-1 text-gray-500 uppercase">YOUR ESTIMATE:</h3>
                 <div className="flex items-baseline space-x-1 sm:space-x-2">
                   <span className="font-comic text-4xl sm:text-6xl text-blue-600">${quoteTotal}</span>
                   <span className="font-bold text-[10px] sm:text-lg text-gray-400 uppercase">/ Cleanup</span>
                 </div>
-                <p className="text-[9px] sm:text-xs font-bold text-green-600 mt-1 sm:mt-2 uppercase">🛡️ 100% Satisfaction Guarantee Included</p>
+                <div className="mt-3 sm:mt-4 bg-green-600 text-white p-2.5 sm:p-3 rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center animate-pulse">
+                  <p className="font-comic text-sm sm:text-xl uppercase tracking-wide">🎉 YOUR FIRST SCOOOP IS <span className="underline decoration-4">FREE!</span> 🎉</p>
+                </div>
+                <p className="text-[9px] sm:text-xs font-bold text-green-600 mt-2 sm:mt-3 uppercase">🛡️ 100% Satisfaction Guarantee Included</p>
 
                 <div className="mt-4 pt-4 border-t-2 border-black/10">
-                  <label className="flex items-center space-x-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="w-6 h-6 border-4 border-black rounded-none checked:bg-blue-600 accent-blue-600"
-                      checked={formData.deodorizer}
-                      onChange={e => setFormData({ ...formData, deodorizer: e.target.checked })}
-                    />
-                    <span className="font-bold text-sm uppercase group-hover:text-blue-600 transition-colors">Add Elite Yard Deodorizing (+$6.25)</span>
-                  </label>
+                  <div className="flex-1">
+                    <p className="text-[10px] sm:text-[12px] font-comic text-blue-600 uppercase mb-2">✨ ADD ELITE YARD DEODORIZING</p>
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, deodorizer: null })}
+                        className={`flex-1 py-1.5 sm:py-2 px-2 rounded-lg border-2 font-comic text-[10px] sm:text-xs transition-all ${formData.deodorizer === null
+                          ? 'bg-red-600 text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                          : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+                          }`}
+                      >
+                        NONE
+                      </button>
+                      {DEODORIZER_OPTIONS.map(opt => (
+                        <button
+                          type="button"
+                          key={opt.id}
+                          onClick={() => setFormData({ ...formData, deodorizer: opt.id })}
+                          className={`flex-1 py-1.5 sm:py-2 px-2 rounded-lg border-2 font-comic text-[10px] sm:text-xs transition-all ${formData.deodorizer === opt.id
+                            ? 'bg-blue-600 text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                            : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+                            }`}
+                        >
+                          {opt.label} (+${(opt.price / (opt.id === 'deodorizer-3x' ? 3 : opt.id === 'deodorizer-2x' ? 2 : 1)).toFixed(2)})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -259,9 +307,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
           <div className="p-4 sm:p-10 bg-white">
 
             {/* REGISTRATION FLOW */}
-            <div className="flex flex-col h-full justify-center">
+            <div className={`${!showSignup ? 'hidden lg:flex' : 'flex'} flex-col h-full justify-center`}>
               {!showSignup && (
-                <div className="text-center py-12 animate-in fade-in duration-700">
+                <div className="text-center py-8 lg:py-12 animate-in fade-in duration-700">
                   <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <span className="text-4xl">🐾</span>
                   </div>
@@ -312,11 +360,38 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                           onChange={e => setFormData({ ...formData, address: e.target.value })}
                         />
                       </div>
+                      <div>
+                        <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">PREFERRED SERVICE DAY</label>
+                        <select
+                          className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase bg-transparent"
+                          value={formData.preferredDay}
+                          onChange={e => setFormData({ ...formData, preferredDay: e.target.value })}
+                        >
+                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
+                            <option key={day} value={day}>{day}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
-                      <div className="bg-blue-50 p-4 border-2 border-blue-600 rounded-xl">
+                      <div className="bg-blue-50 p-4 border-2 border-blue-600 rounded-xl relative overflow-hidden">
+                        <div className="absolute top-3 -right-8 bg-red-600 text-white font-comic text-[8px] w-32 py-0.5 rotate-[25deg] uppercase text-center shadow-lg z-10 border-b border-black/20">
+                          Mission Promo
+                        </div>
                         <h4 className="font-comic text-xs text-blue-800 uppercase mb-2">Secure Mission Payment:</h4>
+
+                        <div className="flex justify-between items-end mb-4 px-1">
+                          <div>
+                            <p className="text-[10px] font-bold text-blue-600/50 uppercase leading-none">REGULAR SCOOOP</p>
+                            <p className="text-lg font-comic text-gray-400 line-through leading-none decoration-red-600/50 decoration-2">${quoteTotal}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold text-red-600 uppercase leading-none">DUE TODAY</p>
+                            <p className="text-3xl font-comic text-red-600 leading-none">$0.00</p>
+                          </div>
+                        </div>
+
                         <div className="bg-white p-3 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                           <CardElement options={{
                             style: {
@@ -328,13 +403,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                             },
                           }} />
                         </div>
-                        <p className="text-[8px] font-bold text-blue-600 mt-2 uppercase tracking-tighter italic">🛡️ encrypted & secure via Stripe</p>
+                        <p className="text-[8px] font-bold text-blue-600 mt-2 uppercase tracking-tighter italic text-center">🛡️ Your first SCOOOP is FREE. Recurring charges begin after flight check.</p>
                       </div>
                       <button
                         onClick={() => setShowPayment(false)}
                         className="text-[10px] font-bold text-gray-400 hover:text-black uppercase underline"
                       >
-                        ← Back to details
+                        ← Back to hero details
                       </button>
                     </div>
                   )}
@@ -351,7 +426,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                       disabled={isSubmitting}
                       className="w-full py-4 sm:py-5 bg-blue-600 text-white font-comic text-xl sm:text-2xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:scale-[1.02] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50 disabled:grayscale"
                     >
-                      {isSubmitting ? 'DEPLOYING...' : showPayment ? 'FINALIZE & ACTIVATE' : 'ACTIVATE MISSION & PAY'}
+                      {isSubmitting ? 'DEPLOYING...' : showPayment ? 'FINALIZE & ACTIVATE' : 'CLAIM FREE SCOOOP'}
                     </button>
                     {!showPayment && (
                       <button
@@ -365,7 +440,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                   </div>
 
                   <p className="text-center text-[10px] font-bold text-gray-400 italic">
-                    * First clean free requires recurring service activation.
+                    * First SCOOOP free requires recurring service activation.
                   </p>
                 </div>
               )}

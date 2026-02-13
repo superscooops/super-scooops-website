@@ -14,7 +14,7 @@ export const PLANS: ServicePlan[] = [
   {
     id: 'sidekick',
     name: 'The Sidekick Plan',
-    price: 20,
+    price: 20, // Base price per cleanup
     frequency: '1x per week cleanup',
     description: 'Perfect for the Lone Wolf',
     features: [
@@ -28,7 +28,7 @@ export const PLANS: ServicePlan[] = [
   {
     id: 'hero',
     name: 'The Hero Plan',
-    price: 40,
+    price: 38, // Base price per cleanup
     frequency: '2x per week cleanup',
     description: 'Our Most Popular Defense',
     features: [
@@ -43,7 +43,7 @@ export const PLANS: ServicePlan[] = [
   {
     id: 'super-scooper',
     name: 'The Super Scooops Plan',
-    price: 56,
+    price: 54,
     frequency: '3x per week cleanup',
     description: 'For the Full Pack',
     features: [
@@ -57,11 +57,15 @@ export const PLANS: ServicePlan[] = [
 ];
 
 export const FREQUENCIES = [
-  { id: '3x-weekly', label: '3x Weekly', factor: 2.8 },
-  { id: '2x-weekly', label: '2x Weekly', factor: 2.0 },
-  { id: 'weekly', label: 'Weekly', factor: 1.0 },
-  { id: 'bi-weekly', label: 'Bi-Weekly', factor: 0.7 },
-  { id: 'monthly', label: 'Monthly', factor: 0.4 }
+  { id: '3x-weekly', label: '3x Weekly', factor: 0.9 },
+  { id: '2x-weekly', label: '2x Weekly', factor: 0.95 },
+  { id: 'weekly', label: 'Weekly', factor: 1.0 }
+];
+
+export const DEODORIZER_OPTIONS = [
+  { id: 'deodorizer-1x', name: '1x Weekly Deodorizing', price: 6.25, label: '1x' },
+  { id: 'deodorizer-2x', name: '2x Weekly Deodorizing', price: 11.50, label: '2x' },
+  { id: 'deodorizer-3x', name: '3x Weekly Deodorizing', price: 15.00, label: '3x' }
 ];
 
 export const ADD_ONS: AddOn[] = [

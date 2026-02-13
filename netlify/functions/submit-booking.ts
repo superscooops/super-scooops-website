@@ -40,7 +40,8 @@ const handler: Handler = async (event) => {
                 comment: `QUESTION FROM RECRUIT:
 Plan: ${data.planName}
 Dogs: ${data.dogs}
-Total: $${data.totalPrice}`,
+Total: $${data.totalPrice}
+Preferred Day: ${data.preferredDay || 'Not specified'}`,
                 marketing_allowed: 1,
                 marketing_allowed_source: "open_api"
             };
@@ -66,6 +67,10 @@ Total: $${data.totalPrice}`,
             'monthly': 'every_four_weeks'
         };
 
+        const deodorizerLabel = data.deodorizer
+            ? data.deodorizer.replace('deodorizer-', '').toUpperCase()
+            : 'NONE';
+
         const registrationPayload = {
             first_name: firstName,
             last_name: lastName,
@@ -82,7 +87,10 @@ Total: $${data.totalPrice}`,
             marketing_allowed: 1,
             terms_open_api: true,
             organization: ORG_SLUG,
-            marketing_allowed_source: "open_api"
+            marketing_allowed_source: "open_api",
+            comment: `PROMO: FREE FIRST CLEANING
+Preferred Service Day: ${data.preferredDay || 'Monday'}
+Deodorizer Mission: ${deodorizerLabel}`
         };
 
         const response = await fetch('https://openapi.sweepandgo.com/api/v2/client_on_boarding/create_client_with_package', {
