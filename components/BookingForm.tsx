@@ -31,6 +31,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     preferredDay: 'Monday',
     preferredDays: ['Monday', 'Monday', 'Monday'] as string[],
   });
+  const [billingSameAsService, setBillingSameAsService] = useState(true);
+  const [billingAddress, setBillingAddress] = useState('');
+  const [billingCity, setBillingCity] = useState('');
+  const [billingState, setBillingState] = useState('');
+  const [billingZip, setBillingZip] = useState('');
 
 
   const selectedFreq = FREQUENCIES[freqIndex];
@@ -122,6 +127,20 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
       return;
     }
 
+    if (showPayment && !billingSameAsService) {
+      const billingChecks: [string, string][] = [
+        [billingAddress.trim(), 'Billing address'],
+        [billingCity.trim(), 'Billing city'],
+        [billingState.trim(), 'Billing state'],
+        [billingZip.trim(), 'Billing ZIP'],
+      ];
+      const missing = billingChecks.filter(([val]) => !val).map(([, label]) => label);
+      if (missing.length) {
+        setError(`Please fill in billing address: ${missing.join(', ')}`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setIsCreatingClient(true);
     setError(null);
@@ -150,7 +169,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
           planName: selectedPlan.name,
           dogs,
           frequencyId: selectedFreq.id,
-          totalPrice: quoteTotal
+          totalPrice: quoteTotal,
+          ...(billingSameAsService ? {} : {
+            billingAddress: billingAddress.trim(),
+            billingCity: billingCity.trim(),
+            billingState: billingState.trim(),
+            billingZip: billingZip.trim(),
+          }),
         })
       });
 
@@ -565,6 +590,51 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                           <div className="text-right text-[10px] font-bold text-gray-500 uppercase">
                             Then every Fri: ${weeklyTotal}/week
                           </div>
+                        </div>
+
+                        <div className="mb-4 p-3 bg-white border-2 border-black/10 rounded-lg space-y-3">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Billing address</p>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={billingSameAsService}
+                              onChange={(e) => setBillingSameAsService(e.target.checked)}
+                              className="rounded border-2 border-gray-400"
+                            />
+                            <span className="text-sm font-comic">Same as service address</span>
+                          </label>
+                          {!billingSameAsService && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              <input
+                                type="text"
+                                placeholder="Street address"
+                                value={billingAddress}
+                                onChange={(e) => setBillingAddress(e.target.value)}
+                                className="sm:col-span-2 px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                              />
+                              <input
+                                type="text"
+                                placeholder="City"
+                                value={billingCity}
+                                onChange={(e) => setBillingCity(e.target.value)}
+                                className="px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                              />
+                              <input
+                                type="text"
+                                placeholder="State"
+                                value={billingState}
+                                onChange={(e) => setBillingState(e.target.value)}
+                                className="px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                              />
+                              <input
+                                type="text"
+                                placeholder="ZIP"
+                                value={billingZip}
+                                onChange={(e) => setBillingZip(e.target.value)}
+                                className="px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         <div className="bg-white p-3 border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">

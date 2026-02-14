@@ -25,6 +25,12 @@ interface CreateClientRequest {
     // Payment (optional - for full registration)
     stripeToken?: string;
     
+    // Billing address (optional; if omitted, service address is used)
+    billingAddress?: string;
+    billingCity?: string;
+    billingState?: string;
+    billingZip?: string;
+    
     // Lead only flag
     isLeadOnly?: boolean;
 }
@@ -173,6 +179,120 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
             };
         }
 
+        // --- STEP 1: Stripe first (customer + subscription). If card is declined, we do NOT create Sweep&GO client.
+        const stripeSecret = process.env.STRIPE_SECRET_KEY;
+        if (!stripeSecret) {
+            return {
+                statusCode: 500,
+                body: JSON.stringify({ error: 'Stripe is not configured. Cannot complete registration.' })
+            };
+        }
+
+        const stripe = new Stripe(stripeSecret);
+        const PRICE_IDS: Record<string, string | undefined> = {
+            'sidekick': process.env.STRIPE_PRICE_SIDEKICK,
+            'hero': process.env.STRIPE_PRICE_HERO,
+            'super-scooper': process.env.STRIPE_PRICE_SUPER_SCOOOPER,
+            'extra-dog': process.env.STRIPE_PRICE_EXTRA_DOG,
+            'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1x,
+            'deodorizer-2x': process.env.STRIPE_PRICE_DEODORIZER_2x,
+            'deodorizer-3x': process.env.STRIPE_PRICE_DEODORIZER_3x,
+        };
+
+        const subscriptionItems: Stripe.SubscriptionCreateParams.Item[] = [];
+        const basePriceId = data.planId ? PRICE_IDS[data.planId] : undefined;
+        if (!basePriceId) {
+            return {
+                statusCode: 500,
+                body: JSON.stringify({ error: `Stripe price not configured for plan: ${data.planId}` })
+            };
+        }
+        subscriptionItems.push({ price: basePriceId, quantity: 1 });
+
+        const dogs = typeof data.dogs === 'number' ? data.dogs : 1;
+        if (dogs > 1) {
+            const extraDogPriceId = PRICE_IDS['extra-dog'];
+            if (!extraDogPriceId) {
+                return {
+                    statusCode: 500,
+                    body: JSON.stringify({ error: 'Stripe price not configured for extra dog' })
+                };
+            }
+            subscriptionItems.push({ price: extraDogPriceId, quantity: dogs - 1 });
+        }
+
+        if (data.deodorizer) {
+            const deodorizerPriceId = PRICE_IDS[data.deodorizer];
+            if (!deodorizerPriceId) {
+                return {
+                    statusCode: 500,
+                    body: JSON.stringify({ error: `Stripe price not configured for deodorizer (${data.deodorizer})` })
+                };
+            }
+            subscriptionItems.push({ price: deodorizerPriceId, quantity: 1 });
+        }
+
+        const billAddress = (data.billingAddress && data.billingAddress.trim()) ? data.billingAddress.trim() : data.address;
+        const billCity = (data.billingCity && data.billingCity.trim()) ? data.billingCity.trim() : data.city;
+        const billState = (data.billingState && data.billingState.trim()) ? data.billingState.trim() : data.state;
+        const billZip = (data.billingZip && data.billingZip.trim()) ? data.billingZip.trim() : data.zip;
+
+        const now = new Date();
+        const nextFriday = new Date(now);
+        const dayOfWeek = nextFriday.getDay();
+        const daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (5 + (7 - dayOfWeek));
+        nextFriday.setDate(nextFriday.getDate() + daysToFriday);
+        nextFriday.setUTCHours(12, 0, 0, 0);
+        const billingCycleAnchor = Math.floor(nextFriday.getTime() / 1000);
+        const promotionCodeId = process.env.STRIPE_FIRST_SCOOP_PROMO_CODE || 'promo_1T0dyt1vIpt8szc84tV37D4X';
+
+        let stripeCustomerId: string;
+        try {
+            const customer = await stripe.customers.create({
+                email: data.email,
+                name: data.name.trim(),
+                source: data.stripeToken,
+                address: {
+                    line1: billAddress,
+                    city: billCity,
+                    state: billState,
+                    postal_code: billZip,
+                    country: 'US',
+                },
+                metadata: {
+                    plan_id: data.planId || '',
+                    dogs: String(dogs),
+                },
+            });
+            stripeCustomerId = customer.id;
+
+            const subscriptionParams: Stripe.SubscriptionCreateParams = {
+                customer: customer.id,
+                items: subscriptionItems,
+                billing_cycle_anchor: billingCycleAnchor,
+                proration_behavior: 'none',
+                metadata: {
+                    plan_id: data.planId || '',
+                    dogs: String(dogs),
+                    service_days: serviceDaysStr,
+                },
+            };
+            if (promotionCodeId) {
+                subscriptionParams.discounts = [{ promotion_code: promotionCodeId }];
+            }
+            await stripe.subscriptions.create(subscriptionParams);
+        } catch (stripeErr: any) {
+            console.error('Stripe error (card may be declined):', stripeErr);
+            const msg = stripeErr.message || 'Unknown error';
+            return {
+                statusCode: 400,
+                body: JSON.stringify({
+                    error: msg.includes('card') ? `Payment failed: ${msg}` : `Payment failed: ${msg}. Please check your card and billing details.`,
+                })
+            };
+        }
+
+        // --- STEP 2: Only after Stripe succeeds, create client in Sweep&GO.
         const registrationPayload = {
             first_name: firstName,
             last_name: lastName,
@@ -215,139 +335,29 @@ Deodorizer Mission: ${deodorizerLabel}`
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Sweep&GO Registration API Error:', errorText);
-            
-            // Try to parse error for better messaging
             let errorMessage = errorText;
             try {
                 const errorJson = JSON.parse(errorText);
                 errorMessage = errorJson.message || errorJson.error || errorText;
             } catch (e) {
-                // Keep raw error text if not JSON
+                // keep raw
             }
-
             return {
                 statusCode: response.status,
-                body: JSON.stringify({ 
-                    error: `Failed to create client: ${errorMessage}` 
+                body: JSON.stringify({
+                    error: `Your payment succeeded but we could not create your account: ${errorMessage}. Please contact support.`,
                 })
             };
         }
 
         const result = await response.json();
 
-        // Create Stripe subscription: weekly billing, first charge on customer's preferred service day.
-        // Requires: STRIPE_SECRET_KEY; Stripe Prices must be recurring with interval 'week' (weekly).
-        // STRIPE_PRICE_SIDEKICK/HERO/SUPER_SCOOOPER, STRIPE_PRICE_EXTRA_DOG, STRIPE_PRICE_DEODORIZER_1x/2x/3x (optional).
-        // Optional: STRIPE_FIRST_SCOOP_PROMO_CODE (Stripe promo for $20 off first service; default set).
-        const stripeSecret = process.env.STRIPE_SECRET_KEY;
-        if (!stripeSecret) {
-            console.error('STRIPE_SECRET_KEY missing; client created in Sweep&GO but no recurring subscription');
-            return {
-                statusCode: 200,
-                body: JSON.stringify({
-                    success: true,
-                    mode: 'registration',
-                    clientId: result.client_id || result.id,
-                    data: result,
-                    warning: 'Stripe subscription not created (missing STRIPE_SECRET_KEY)'
-                } as SweepAndGoResponse)
-            };
-        }
-
-        const stripe = new Stripe(stripeSecret);
-        const PRICE_IDS: Record<string, string | undefined> = {
-            'sidekick': process.env.STRIPE_PRICE_SIDEKICK,
-            'hero': process.env.STRIPE_PRICE_HERO,
-            'super-scooper': process.env.STRIPE_PRICE_SUPER_SCOOOPER,
-            'extra-dog': process.env.STRIPE_PRICE_EXTRA_DOG,
-            'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1x,
-            'deodorizer-2x': process.env.STRIPE_PRICE_DEODORIZER_2x,
-            'deodorizer-3x': process.env.STRIPE_PRICE_DEODORIZER_3x,
-        };
-
-        const subscriptionItems: Stripe.SubscriptionCreateParams.Item[] = [];
-        const basePriceId = data.planId ? PRICE_IDS[data.planId] : undefined;
-        if (!basePriceId) {
-            console.error(`Missing Stripe Price ID for plan: ${data.planId}`);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ error: `Stripe price not configured for plan: ${data.planId}` })
-            };
-        }
-        subscriptionItems.push({ price: basePriceId, quantity: 1 });
-
-        const dogs = typeof data.dogs === 'number' ? data.dogs : 1;
-        if (dogs > 1) {
-            const extraDogPriceId = PRICE_IDS['extra-dog'];
-            if (!extraDogPriceId) {
-                console.error('Missing Stripe Price ID for extra-dog');
-                return {
-                    statusCode: 500,
-                    body: JSON.stringify({ error: 'Stripe price not configured for extra dog' })
-                };
-            }
-            subscriptionItems.push({ price: extraDogPriceId, quantity: dogs - 1 });
-        }
-
-        if (data.deodorizer) {
-            const deodorizerPriceId = PRICE_IDS[data.deodorizer];
-            if (!deodorizerPriceId) {
-                console.error(`Missing Stripe Price ID for deodorizer: ${data.deodorizer}`);
-                return {
-                    statusCode: 500,
-                    body: JSON.stringify({ error: `Stripe price not configured for deodorizer (${data.deodorizer})` })
-                };
-            }
-            subscriptionItems.push({ price: deodorizerPriceId, quantity: 1 });
-        }
-
-        // Bill every Friday. First invoice gets $20 off via Stripe promo (1 free scoop).
-        const now = new Date();
-        const nextFriday = new Date(now);
-        const dayOfWeek = nextFriday.getDay();
-        const daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (5 + (7 - dayOfWeek));
-        nextFriday.setDate(nextFriday.getDate() + daysToFriday);
-        nextFriday.setUTCHours(12, 0, 0, 0);
-        const billingCycleAnchor = Math.floor(nextFriday.getTime() / 1000);
-
-        const promotionCodeId = process.env.STRIPE_FIRST_SCOOP_PROMO_CODE || 'promo_1T0dyt1vIpt8szc84tV37D4X';
-
         try {
-            const customer = await stripe.customers.create({
-                email: data.email,
-                name: data.name.trim(),
-                source: data.stripeToken,
-                metadata: {
-                    sweep_client_id: String(result.client_id || result.id || ''),
-                    plan_id: data.planId || '',
-                    dogs: String(dogs),
-                },
+            await stripe.customers.update(stripeCustomerId, {
+                metadata: { sweep_client_id: String(result.client_id || result.id || '') },
             });
-
-            const subscriptionParams: Stripe.SubscriptionCreateParams = {
-                customer: customer.id,
-                items: subscriptionItems,
-                billing_cycle_anchor: billingCycleAnchor,
-                proration_behavior: 'none',
-                metadata: {
-                    sweep_client_id: String(result.client_id || result.id || ''),
-                    plan_id: data.planId || '',
-                    dogs: String(dogs),
-                    service_days: serviceDaysStr,
-                },
-            };
-            if (promotionCodeId) {
-                subscriptionParams.discounts = [{ promotion_code: promotionCodeId }];
-            }
-            const subscription = await stripe.subscriptions.create(subscriptionParams);
-        } catch (stripeErr: any) {
-            console.error('Stripe subscription error:', stripeErr);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({
-                    error: `Client created in Sweep&GO, but recurring subscription failed: ${stripeErr.message || 'Unknown error'}`,
-                })
-            };
+        } catch (e) {
+            // non-fatal
         }
 
         return {
