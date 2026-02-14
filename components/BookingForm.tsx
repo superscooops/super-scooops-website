@@ -25,7 +25,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     address: '',
     city: '',
     state: '',
-    zip: '92691',
+    zip: '',
     phone: '',
     deodorizer: null as string | null,
     preferredDay: 'Monday',
@@ -60,6 +60,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
 
   const cleansPerWeek = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
   const weeklyTotal = (parseFloat(quoteTotal) * cleansPerWeek).toFixed(2);
+  const firstServiceDiscount = 20;
+  const afterFirstService = Math.max(0, parseFloat(weeklyTotal) - firstServiceDiscount).toFixed(2);
 
   const weeklyBreakdown = useMemo(() => {
     const factor = selectedFreq.factor;
@@ -513,13 +515,12 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                         <h4 className="font-comic text-xs text-blue-800 uppercase mb-2">Secure Mission Payment:</h4>
 
                         <div className="mb-3 p-2 bg-white/80 border-2 border-blue-600 rounded-lg">
-                          <p className="text-[10px] font-bold text-blue-800 uppercase leading-none">Recurring billing</p>
-                          <p className="text-lg sm:text-xl font-comic text-blue-900 leading-tight">You will be billed <span className="font-bold text-blue-600">${weeklyTotal}/week</span></p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">First week free, then charged weekly on your service day.</p>
+                          <p className="text-[10px] font-bold text-blue-800 uppercase leading-none">Billing</p>
+                          <p className="text-sm font-comic text-blue-900 leading-tight">$20 off your first service. Then <span className="font-bold text-blue-600">${weeklyTotal}/week</span> every Friday.</p>
                         </div>
 
                         <div className="mb-4 p-3 bg-white border-2 border-black/10 rounded-lg space-y-1.5">
-                          <p className="text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200 pb-1 mb-1">What ${weeklyTotal}/week includes</p>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200 pb-1 mb-1">Pre-payment invoice</p>
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-700">{selectedPlan.name} ({cleansPerWeek}×/week)</span>
                             <span className="font-comic font-bold">${weeklyBreakdown.base.toFixed(2)}</span>
@@ -537,9 +538,18 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                             </div>
                           )}
                           <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
-                            <span>Total per week</span>
+                            <span>Subtotal per week</span>
                             <span className="font-comic">${weeklyTotal}</span>
                           </div>
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>First service discount (1 free scoop)</span>
+                            <span className="font-comic font-bold">-$20.00</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
+                            <span>Due after first service</span>
+                            <span className="font-comic">${afterFirstService}</span>
+                          </div>
+                          <p className="text-[10px] text-gray-500 mt-1">Then every Friday: ${weeklyTotal}/week</p>
                         </div>
 
                         <div className="flex justify-between items-end mb-4 px-1">
@@ -548,7 +558,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                             <p className="text-2xl font-comic text-red-600 leading-none">$0.00</p>
                           </div>
                           <div className="text-right text-[10px] font-bold text-gray-500 uppercase">
-                            After trial: ${weeklyTotal}/week
+                            Then every Fri: ${weeklyTotal}/week
                           </div>
                         </div>
 
@@ -563,7 +573,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                             },
                           }} />
                         </div>
-                        <p className="text-[8px] font-bold text-blue-600 mt-2 uppercase tracking-tighter italic text-center">🛡️ Your first SCOOOP is FREE. Recurring charges begin after flight check.</p>
+                        <p className="text-[8px] font-bold text-blue-600 mt-2 uppercase tracking-tighter italic text-center">🛡️ $20 off your first scoop applied. Billed every Friday after first service.</p>
                       </div>
                       <button
                         onClick={() => setShowPayment(false)}

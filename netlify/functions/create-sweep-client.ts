@@ -238,7 +238,7 @@ Deodorizer Mission: ${deodorizerLabel}`
         // Create Stripe subscription: weekly billing, first charge on customer's preferred service day.
         // Requires: STRIPE_SECRET_KEY; Stripe Prices must be recurring with interval 'week' (weekly).
         // STRIPE_PRICE_SIDEKICK/HERO/SUPER_SCOOOPER, STRIPE_PRICE_EXTRA_DOG, STRIPE_PRICE_DEODORIZER_1x/2x/3x (optional).
-        // Optional: STRIPE_TRIAL_DAYS (default 7 = first week free).
+        // Optional: STRIPE_FIRST_SCOOP_PROMO_CODE (Stripe promo for $20 off first service; default set).
         const stripeSecret = process.env.STRIPE_SECRET_KEY;
         if (!stripeSecret) {
             console.error('STRIPE_SECRET_KEY missing; client created in Sweep&GO but no recurring subscription');
@@ -301,21 +301,16 @@ Deodorizer Mission: ${deodorizerLabel}`
             subscriptionItems.push({ price: deodorizerPriceId, quantity: 1 });
         }
 
-        const trialDays = parseInt(process.env.STRIPE_TRIAL_DAYS || '7', 10);
-
-        const dayNameToNumber: Record<string, number> = {
-            Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6
-        };
-        const firstBillingDayOfWeek = dayNameToNumber[firstServiceDay] ?? 1;
+        // Bill every Friday. First invoice gets $20 off via Stripe promo (1 free scoop).
         const now = new Date();
-        const trialEnd = new Date(now);
-        trialEnd.setDate(trialEnd.getDate() + trialDays);
-        let anchor = new Date(trialEnd);
-        while (anchor.getDay() !== firstBillingDayOfWeek) {
-            anchor.setDate(anchor.getDate() + 1);
-        }
-        anchor.setUTCHours(12, 0, 0, 0);
-        const billingCycleAnchor = Math.floor(anchor.getTime() / 1000);
+        const nextFriday = new Date(now);
+        const dayOfWeek = nextFriday.getDay();
+        const daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (5 + (7 - dayOfWeek));
+        nextFriday.setDate(nextFriday.getDate() + daysToFriday);
+        nextFriday.setUTCHours(12, 0, 0, 0);
+        const billingCycleAnchor = Math.floor(nextFriday.getTime() / 1000);
+
+        const promotionCodeId = process.env.STRIPE_FIRST_SCOOP_PROMO_CODE || 'promo_1T0dyt1vIpt8szc84tV37D4X';
 
         try {
             const customer = await stripe.customers.create({
@@ -329,10 +324,9 @@ Deodorizer Mission: ${deodorizerLabel}`
                 },
             });
 
-            const subscription = await stripe.subscriptions.create({
+            const subscriptionParams: Stripe.SubscriptionCreateParams = {
                 customer: customer.id,
                 items: subscriptionItems,
-                trial_period_days: trialDays,
                 billing_cycle_anchor: billingCycleAnchor,
                 proration_behavior: 'none',
                 metadata: {
@@ -341,7 +335,11 @@ Deodorizer Mission: ${deodorizerLabel}`
                     dogs: String(dogs),
                     service_days: serviceDaysStr,
                 },
-            });
+            };
+            if (promotionCodeId) {
+                subscriptionParams.promotion_code = promotionCodeId;
+            }
+            const subscription = await stripe.subscriptions.create(subscriptionParams);
         } catch (stripeErr: any) {
             console.error('Stripe subscription error:', stripeErr);
             return {
@@ -360,7 +358,7 @@ Deodorizer Mission: ${deodorizerLabel}`
                 clientId: result.client_id || result.id,
                 data: result,
                 subscriptionActive: true,
-                trialDays,
+                billingDay: 'Friday',
             } as SweepAndGoResponse)
         };
 
