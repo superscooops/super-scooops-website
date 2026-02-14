@@ -19,7 +19,9 @@ async function handler(event) {
             'hero': process.env.STRIPE_PRICE_HERO,
             'super-scooper': process.env.STRIPE_PRICE_SUPER_SCOOOPER,
             'extra-dog': process.env.STRIPE_PRICE_EXTRA_DOG,
-            'deodorizer': process.env.STRIPE_PRICE_DEODORIZER,
+            'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1x,
+            'deodorizer-2x': process.env.STRIPE_PRICE_DEODORIZER_2x,
+            'deodorizer-3x': process.env.STRIPE_PRICE_DEODORIZER_3x,
         };
 
         const lineItems: any[] = [];
@@ -38,8 +40,8 @@ async function handler(event) {
 
         // 3. Add Deodorizer (if selected)
         if (deodorizer) {
-            const deodorizerPriceId = PRICE_IDS['deodorizer'];
-            if (!deodorizerPriceId) throw new Error('Missing Price ID for Deodorizer');
+            const deodorizerPriceId = PRICE_IDS[deodorizer];
+            if (!deodorizerPriceId) throw new Error(`Missing Price ID for Deodorizer (${deodorizer})`);
             lineItems.push({ price: deodorizerPriceId, quantity: 1 });
         }
 

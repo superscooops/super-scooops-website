@@ -18,6 +18,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [clientCreated, setClientCreated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -27,11 +28,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     zip: '92691',
     phone: '',
     deodorizer: null as string | null,
-    preferredDay: 'Monday'
+    preferredDay: 'Monday',
+    preferredDays: ['Monday', 'Monday', 'Monday'] as string[],
   });
 
 
   const selectedFreq = FREQUENCIES[freqIndex];
+  const serviceDaysCount = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
+  const preferredDaysSlice = formData.preferredDays.slice(0, serviceDaysCount);
 
   // Dynamic Pricing Calculation
   const quoteTotal = useMemo(() => {
@@ -53,6 +57,27 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
 
     return perCleanup.toFixed(2);
   }, [dogs, freqIndex, formData.deodorizer, selectedFreq]);
+
+  const cleansPerWeek = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
+  const weeklyTotal = (parseFloat(quoteTotal) * cleansPerWeek).toFixed(2);
+
+  const weeklyBreakdown = useMemo(() => {
+    const factor = selectedFreq.factor;
+    const baseWeekly = 20 * cleansPerWeek;
+    const dogWeekly = Math.max(0, dogs - 1) * 2.50;
+    const deodorizerWeekly = formData.deodorizer
+      ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price ?? 0
+      : 0;
+    return {
+      base: (baseWeekly * factor),
+      extraDogs: (dogWeekly * factor),
+      deodorizer: (deodorizerWeekly * factor),
+      deodorizerLabel: formData.deodorizer
+        ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.name
+        : null,
+      extraDogsCount: Math.max(0, dogs - 1),
+    };
+  }, [cleansPerWeek, dogs, formData.deodorizer, selectedFreq]);
 
   const handleGetQuote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +109,12 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
         setError(`Please fill in all hero details: ${missing.join(', ')}`);
         return;
       }
+      const days = formData.preferredDays.slice(0, serviceDaysCount);
+      const uniqueDays = new Set(days);
+      if (uniqueDays.size !== days.length) {
+        setError('Please select different days for each service visit (e.g. Monday and Thursday for 2x weekly).');
+        return;
+      }
       setShowPayment(true);
       setError(null);
       return;
@@ -111,6 +142,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          preferredDays: formData.preferredDays.slice(0, serviceDaysCount),
           stripeToken: token.id,
           planId: selectedPlan.id,
           planName: selectedPlan.name,
@@ -431,18 +463,46 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                           />
                         </div>
                       </div>
-                      <div>
-                        <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">PREFERRED SERVICE DAY</label>
-                        <select
-                          className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase bg-transparent"
-                          value={formData.preferredDay}
-                          onChange={e => setFormData({ ...formData, preferredDay: e.target.value })}
-                        >
-                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
-                            <option key={day} value={day}>{day}</option>
+                      {serviceDaysCount === 1 ? (
+                        <div>
+                          <label className="block font-comic text-[10px] uppercase mb-1 text-blue-600">PREFERRED SERVICE DAY</label>
+                          <select
+                            className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase bg-transparent"
+                            value={formData.preferredDays[0]}
+                            onChange={e => {
+                              const next = [...formData.preferredDays];
+                              next[0] = e.target.value;
+                              setFormData({ ...formData, preferredDay: next[0], preferredDays: next });
+                            }}
+                          >
+                            {WEEKDAYS.map(day => (
+                              <option key={day} value={day}>{day}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <span className="block font-comic text-[10px] uppercase mb-1 text-blue-600">SERVICE DAYS ({serviceDaysCount}x per week)</span>
+                          {preferredDaysSlice.map((day, i) => (
+                            <div key={i}>
+                              <label className="block font-comic text-[10px] uppercase mb-0.5 text-gray-500">Day {i + 1}</label>
+                              <select
+                                className="w-full border-b-2 sm:border-b-4 border-black p-1.5 sm:p-2 font-bold text-sm sm:text-lg outline-none focus:border-red-600 transition-colors uppercase bg-transparent"
+                                value={day}
+                                onChange={e => {
+                                  const next = [...formData.preferredDays];
+                                  next[i] = e.target.value;
+                                  setFormData({ ...formData, preferredDay: next[0], preferredDays: next });
+                                }}
+                              >
+                                {WEEKDAYS.map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                            </div>
                           ))}
-                        </select>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
@@ -452,14 +512,43 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                         </div>
                         <h4 className="font-comic text-xs text-blue-800 uppercase mb-2">Secure Mission Payment:</h4>
 
+                        <div className="mb-3 p-2 bg-white/80 border-2 border-blue-600 rounded-lg">
+                          <p className="text-[10px] font-bold text-blue-800 uppercase leading-none">Recurring billing</p>
+                          <p className="text-lg sm:text-xl font-comic text-blue-900 leading-tight">You will be billed <span className="font-bold text-blue-600">${weeklyTotal}/week</span></p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">First week free, then charged weekly on your service day.</p>
+                        </div>
+
+                        <div className="mb-4 p-3 bg-white border-2 border-black/10 rounded-lg space-y-1.5">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200 pb-1 mb-1">What ${weeklyTotal}/week includes</p>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-700">{selectedPlan.name} ({cleansPerWeek}×/week)</span>
+                            <span className="font-comic font-bold">${weeklyBreakdown.base.toFixed(2)}</span>
+                          </div>
+                          {weeklyBreakdown.extraDogsCount > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">Extra dog{weeklyBreakdown.extraDogsCount > 1 ? 's' : ''} ({weeklyBreakdown.extraDogsCount} × $2.50)</span>
+                              <span className="font-comic font-bold">${weeklyBreakdown.extraDogs.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {weeklyBreakdown.deodorizerLabel && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">{weeklyBreakdown.deodorizerLabel}</span>
+                              <span className="font-comic font-bold">${weeklyBreakdown.deodorizer.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
+                            <span>Total per week</span>
+                            <span className="font-comic">${weeklyTotal}</span>
+                          </div>
+                        </div>
+
                         <div className="flex justify-between items-end mb-4 px-1">
                           <div>
-                            <p className="text-[10px] font-bold text-blue-600/50 uppercase leading-none">REGULAR SCOOOP</p>
-                            <p className="text-lg font-comic text-gray-400 line-through leading-none decoration-red-600/50 decoration-2">${quoteTotal}</p>
+                            <p className="text-[10px] font-bold text-blue-600/50 uppercase leading-none">DUE TODAY</p>
+                            <p className="text-2xl font-comic text-red-600 leading-none">$0.00</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-[10px] font-bold text-red-600 uppercase leading-none">DUE TODAY</p>
-                            <p className="text-3xl font-comic text-red-600 leading-none">$0.00</p>
+                          <div className="text-right text-[10px] font-bold text-gray-500 uppercase">
+                            After trial: ${weeklyTotal}/week
                           </div>
                         </div>
 

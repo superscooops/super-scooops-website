@@ -17,6 +17,8 @@ interface CreateClientRequest {
     dogs?: number;
     frequencyId?: string;
     preferredDay?: string;
+    /** For 2x/3x weekly: ordered service days, e.g. ['Monday','Thursday'] */
+    preferredDays?: string[];
     deodorizer?: string | null;
     totalPrice?: string | number;
     
@@ -102,7 +104,7 @@ const handler: Handler = async (event): Promise<{ statusCode: number; body: stri
 Plan: ${data.planName || 'Not specified'}
 Dogs: ${data.dogs || 1}
 Total: $${data.totalPrice || 'N/A'}
-Preferred Day: ${data.preferredDay || 'Not specified'}`,
+Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.length ? data.preferredDays.join(', ') : (data.preferredDay || 'Not specified')}`,
                 marketing_allowed: 1,
                 marketing_allowed_source: "open_api"
             };
@@ -155,6 +157,12 @@ Preferred Day: ${data.preferredDay || 'Not specified'}`,
             ? data.deodorizer.replace('deodorizer-', '').toUpperCase()
             : 'NONE';
 
+        const serviceDaysList = Array.isArray(data.preferredDays) && data.preferredDays.length
+            ? data.preferredDays.filter(Boolean)
+            : [data.preferredDay || 'Monday'];
+        const serviceDaysStr = serviceDaysList.join(', ');
+        const firstServiceDay = serviceDaysList[0] || 'Monday';
+
         // Validate Stripe token for full registration
         if (!data.stripeToken) {
             return {
@@ -178,15 +186,16 @@ Preferred Day: ${data.preferredDay || 'Not specified'}`,
             cross_sell_name: data.planName || 'Standard Plan',
             clean_up_frequency: freqMap[data.frequencyId || 'weekly'] || 'once_a_week',
             category: "cleanup",
-            billing_interval: "monthly",
+            billing_interval: "weekly",
             credit_card_token: data.stripeToken,
             name_on_card: data.name.trim(),
             marketing_allowed: 1,
             terms_open_api: true,
             organization: ORG_SLUG,
             marketing_allowed_source: "open_api",
+            service_days: serviceDaysStr,
             comment: `PROMO: FREE FIRST CLEANING
-Preferred Service Day: ${data.preferredDay || 'Monday'}
+Preferred Service Days: ${serviceDaysStr}
 Dogs: ${data.dogs || 1}
 Deodorizer Mission: ${deodorizerLabel}`
         };
@@ -226,9 +235,10 @@ Deodorizer Mission: ${deodorizerLabel}`
 
         const result = await response.json();
 
-        // Create Stripe subscription with free trial (first cleanup free, then recurring).
-        // Requires: STRIPE_SECRET_KEY, STRIPE_PRICE_SIDEKICK/HERO/SUPER_SCOOOPER, STRIPE_PRICE_EXTRA_DOG, STRIPE_PRICE_DEODORIZER (optional).
-        // Optional: STRIPE_TRIAL_DAYS (default 7 = first week free before first charge).
+        // Create Stripe subscription: weekly billing, first charge on customer's preferred service day.
+        // Requires: STRIPE_SECRET_KEY; Stripe Prices must be recurring with interval 'week' (weekly).
+        // STRIPE_PRICE_SIDEKICK/HERO/SUPER_SCOOOPER, STRIPE_PRICE_EXTRA_DOG, STRIPE_PRICE_DEODORIZER_1x/2x/3x (optional).
+        // Optional: STRIPE_TRIAL_DAYS (default 7 = first week free).
         const stripeSecret = process.env.STRIPE_SECRET_KEY;
         if (!stripeSecret) {
             console.error('STRIPE_SECRET_KEY missing; client created in Sweep&GO but no recurring subscription');
@@ -250,7 +260,9 @@ Deodorizer Mission: ${deodorizerLabel}`
             'hero': process.env.STRIPE_PRICE_HERO,
             'super-scooper': process.env.STRIPE_PRICE_SUPER_SCOOOPER,
             'extra-dog': process.env.STRIPE_PRICE_EXTRA_DOG,
-            'deodorizer': process.env.STRIPE_PRICE_DEODORIZER,
+            'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1x,
+            'deodorizer-2x': process.env.STRIPE_PRICE_DEODORIZER_2x,
+            'deodorizer-3x': process.env.STRIPE_PRICE_DEODORIZER_3x,
         };
 
         const subscriptionItems: Stripe.SubscriptionCreateParams.Item[] = [];
@@ -278,18 +290,32 @@ Deodorizer Mission: ${deodorizerLabel}`
         }
 
         if (data.deodorizer) {
-            const deodorizerPriceId = PRICE_IDS['deodorizer'];
+            const deodorizerPriceId = PRICE_IDS[data.deodorizer];
             if (!deodorizerPriceId) {
-                console.error('Missing Stripe Price ID for deodorizer');
+                console.error(`Missing Stripe Price ID for deodorizer: ${data.deodorizer}`);
                 return {
                     statusCode: 500,
-                    body: JSON.stringify({ error: 'Stripe price not configured for deodorizer' })
+                    body: JSON.stringify({ error: `Stripe price not configured for deodorizer (${data.deodorizer})` })
                 };
             }
             subscriptionItems.push({ price: deodorizerPriceId, quantity: 1 });
         }
 
         const trialDays = parseInt(process.env.STRIPE_TRIAL_DAYS || '7', 10);
+
+        const dayNameToNumber: Record<string, number> = {
+            Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6
+        };
+        const firstBillingDayOfWeek = dayNameToNumber[firstServiceDay] ?? 1;
+        const now = new Date();
+        const trialEnd = new Date(now);
+        trialEnd.setDate(trialEnd.getDate() + trialDays);
+        let anchor = new Date(trialEnd);
+        while (anchor.getDay() !== firstBillingDayOfWeek) {
+            anchor.setDate(anchor.getDate() + 1);
+        }
+        anchor.setUTCHours(12, 0, 0, 0);
+        const billingCycleAnchor = Math.floor(anchor.getTime() / 1000);
 
         try {
             const customer = await stripe.customers.create({
@@ -307,10 +333,13 @@ Deodorizer Mission: ${deodorizerLabel}`
                 customer: customer.id,
                 items: subscriptionItems,
                 trial_period_days: trialDays,
+                billing_cycle_anchor: billingCycleAnchor,
+                proration_behavior: 'none',
                 metadata: {
                     sweep_client_id: String(result.client_id || result.id || ''),
                     plan_id: data.planId || '',
                     dogs: String(dogs),
+                    service_days: serviceDaysStr,
                 },
             });
         } catch (stripeErr: any) {
