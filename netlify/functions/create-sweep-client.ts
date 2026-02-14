@@ -337,7 +337,7 @@ Deodorizer Mission: ${deodorizerLabel}`
                 },
             };
             if (promotionCodeId) {
-                subscriptionParams.promotion_code = promotionCodeId;
+                subscriptionParams.discounts = [{ promotion_code: promotionCodeId }];
             }
             const subscription = await stripe.subscriptions.create(subscriptionParams);
         } catch (stripeErr: any) {

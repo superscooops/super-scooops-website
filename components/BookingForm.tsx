@@ -239,8 +239,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/80 backdrop-blur-md p-0 sm:p-4 sm:flex sm:items-center sm:justify-center min-h-[100dvh]">
-      <div className="bg-white w-full max-w-4xl min-h-0 border-x-0 sm:border-4 border-black relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] sm:my-8">
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/80 backdrop-blur-md p-4 min-h-[100dvh] flex items-center justify-center">
+      <div className="bg-white w-full max-w-4xl min-h-0 border-x-0 sm:border-4 border-black relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] my-auto">
 
         {/* Close Button */}
         <button
@@ -346,9 +346,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                   <span className="font-comic text-4xl sm:text-6xl text-blue-600">${quoteTotal}</span>
                   <span className="font-bold text-[10px] sm:text-lg text-gray-400 uppercase">/ Cleanup</span>
                 </div>
-                <div className="mt-3 sm:mt-4 bg-green-600 text-white p-2.5 sm:p-3 rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center animate-pulse">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('signup-fields')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="mt-3 sm:mt-4 w-full bg-green-600 text-white p-2.5 sm:p-3 rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center animate-pulse hover:bg-green-700 transition-colors cursor-pointer"
+                >
                   <p className="font-comic text-sm sm:text-xl uppercase tracking-wide">🎉 YOUR FIRST SCOOOP IS <span className="underline decoration-4">FREE!</span> 🎉</p>
-                </div>
+                  <p className="text-[10px] mt-1 opacity-90">Tap to claim →</p>
+                </button>
                 <p className="text-[9px] sm:text-xs font-bold text-green-600 mt-2 sm:mt-3 uppercase">🛡️ 100% Satisfaction Guarantee Included</p>
 
                 <div className="mt-4 pt-4 border-t-2 border-black/10">
