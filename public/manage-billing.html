@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Billing | Super Scooops</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+    <style>
+        .font-comic { font-family: 'Luckiest Guy', cursive; }
+        .comic-border { border: 4px solid black; box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1); }
+    </style>
+</head>
+<body class="bg-[#FFCC00]/10 min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-white comic-border p-8 sm:p-12">
+        <h1 class="font-comic text-3xl sm:text-4xl text-blue-600 mb-2 uppercase">Manage Billing</h1>
+        <p class="text-sm font-bold text-gray-600 mb-6">Update your card, cancel or change your subscription, and view invoices.</p>
+
+        <form id="billing-form" class="space-y-4">
+            <div>
+                <label for="email" class="block font-bold text-gray-700 text-sm uppercase mb-1">Email address</label>
+                <input type="email" id="email" name="email" required
+                    placeholder="you@example.com"
+                    class="w-full border-2 border-black p-3 font-bold outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <p id="error" class="text-red-600 text-sm font-bold hidden"></p>
+            <button type="submit" id="submit-btn"
+                class="w-full bg-blue-600 text-white font-comic text-xl px-6 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all disabled:opacity-50">
+                Go to billing portal
+            </button>
+        </form>
+
+        <p class="mt-6 text-xs text-gray-500">Use the same email you used when you signed up. You’ll be taken to Stripe to manage your subscription and payment method.</p>
+
+        <div class="mt-6 pt-6 border-t border-gray-200">
+            <p class="text-xs font-bold text-gray-600 uppercase mb-2">Or open the portal directly</p>
+            <a href="https://billing.stripe.com/p/login/8x200beQn9lQ4VhcPXcwg00" target="_blank" rel="noopener noreferrer"
+                class="inline-block w-full text-center bg-gray-100 text-gray-800 font-comic text-lg px-6 py-3 border-2 border-black hover:bg-gray-200 transition-all">
+                Sign in to Stripe billing portal
+            </a>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <a href="/" class="text-blue-600 font-bold hover:underline">← Return to HQ</a>
+        </div>
+    </div>
+    <script>
+        document.getElementById('billing-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var btn = document.getElementById('submit-btn');
+            var errEl = document.getElementById('error');
+            errEl.classList.add('hidden');
+            btn.disabled = true;
+            btn.textContent = 'Opening…';
+            try {
+                var res = await fetch('/.netlify/functions/create-billing-portal-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: document.getElementById('email').value.trim() })
+                });
+                var data = await res.json();
+                if (!res.ok) {
+                    errEl.textContent = data.error || 'Something went wrong.';
+                    errEl.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.textContent = 'Go to billing portal';
+                    return;
+                }
+                if (data.url) window.location.href = data.url;
+                else { errEl.textContent = 'No redirect URL received.'; errEl.classList.remove('hidden'); }
+            } catch (e) {
+                errEl.textContent = 'Network error. Try again.';
+                errEl.classList.remove('hidden');
+            }
+            btn.disabled = false;
+            btn.textContent = 'Go to billing portal';
+        });
+    </script>
+</body>
+</html>

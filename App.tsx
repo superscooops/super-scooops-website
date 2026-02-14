@@ -51,7 +51,7 @@ const App: React.FC = () => {
               <button onClick={() => handleScroll('plans')} className="hover:text-[#E60000] transition-colors font-bold">Mission Pricing</button>
               <button onClick={() => handleScroll('faq')} className="hover:text-[#E60000] transition-colors font-bold">Intel Briefing</button>
               <a
-                href="https://client.sweepandgo.com/super-scooops-qhnjn/login"
+                href="https://client.sweepandgo.com/login/super-scooops-qhnjn"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-[#0056B3] transition-colors font-bold text-gray-400"
@@ -59,10 +59,12 @@ const App: React.FC = () => {
                 CLIENT PORTAL
               </a>
               <a
-                href="/manage-billing.html"
+                href="https://billing.stripe.com/p/login/8x200beQn9lQ4VhcPXcwg00"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-[#0056B3] transition-colors font-bold text-gray-400"
               >
-                MANAGE ACCOUNT
+                MANAGE SUBSCRIPTION
               </a>
             </div>
             <div className="flex items-center space-x-4">
@@ -275,7 +277,7 @@ const App: React.FC = () => {
                   <li><button onClick={() => handleScroll('faq')} className="hover:text-white uppercase">Common Briefing</button></li>
                   <li>
                     <a
-                      href="https://client.sweepandgo.com/super-scooops-qhnjn/login"
+                      href="https://client.sweepandgo.com/login/super-scooops-qhnjn"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-white uppercase"
@@ -284,8 +286,13 @@ const App: React.FC = () => {
                     </a>
                   </li>
                   <li>
-                    <a href="/manage-billing.html" className="hover:text-white uppercase">
-                      Manage account
+                    <a
+                      href="https://billing.stripe.com/p/login/8x200beQn9lQ4VhcPXcwg00"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-white uppercase"
+                    >
+                      Manage subscription
                     </a>
                   </li>
                 </ul>
