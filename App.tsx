@@ -58,6 +58,12 @@ const App: React.FC = () => {
               >
                 CLIENT PORTAL
               </a>
+              <a
+                href="/manage-billing.html"
+                className="hover:text-[#0056B3] transition-colors font-bold text-gray-400"
+              >
+                MANAGE ACCOUNT
+              </a>
             </div>
             <div className="flex items-center space-x-4">
               <button
@@ -275,6 +281,11 @@ const App: React.FC = () => {
                       className="hover:text-white uppercase"
                     >
                       Client Portal
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/manage-billing.html" className="hover:text-white uppercase">
+                      Manage account
                     </a>
                   </li>
                 </ul>
