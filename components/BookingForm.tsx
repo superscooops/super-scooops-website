@@ -239,8 +239,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="bg-white w-full max-w-4xl min-h-screen sm:min-h-0 border-x-0 sm:border-4 border-black relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]">
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/80 backdrop-blur-md p-0 sm:p-4 sm:flex sm:items-center sm:justify-center min-h-[100dvh]">
+      <div className="bg-white w-full max-w-4xl min-h-0 border-x-0 sm:border-4 border-black relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] sm:my-8">
 
         {/* Close Button */}
         <button
@@ -546,7 +546,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                             <span className="font-comic font-bold">-$20.00</span>
                           </div>
                           <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
-                            <span>Due after first service</span>
+                            <span>Due at the end of your first full week</span>
                             <span className="font-comic">${afterFirstService}</span>
                           </div>
                           <p className="text-[10px] text-gray-500 mt-1">Then every Friday: ${weeklyTotal}/week</p>

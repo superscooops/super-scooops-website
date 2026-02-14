@@ -4,6 +4,7 @@ import Logo from './components/Logo';
 import PricingCard from './components/PricingCard';
 import BookingForm from './components/BookingForm';
 import StickyCTA from './components/StickyCTA';
+import StickyLogo from './components/StickyLogo';
 import { PLANS, ADD_ONS } from './constants';
 import { ServicePlan } from './types';
 import { loadStripe } from '@stripe/stripe-js';
@@ -18,9 +19,17 @@ const App: React.FC = () => {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('claim')) {
-      setSelectedPlan(PLANS[1]); // Default to Hero Plan for the claim
+      setSelectedPlan(PLANS[1]);
+      return;
     }
+    const closed = sessionStorage.getItem('quote-popup-closed');
+    if (!closed) setSelectedPlan(PLANS[1]);
   }, []);
+
+  const closeQuotePopup = () => {
+    sessionStorage.setItem('quote-popup-closed', '1');
+    setSelectedPlan(null);
+  };
 
   const handleScroll = (id: string) => {
     const element = document.getElementById(id);
@@ -31,9 +40,9 @@ const App: React.FC = () => {
 
   return (
     <Elements stripe={stripePromise}>
-      <div className="min-h-screen flex flex-col bg-white">
-        {/* Sticky Navigation */}
-        <nav className="bg-white border-b-4 border-black sticky top-0 z-50 px-4 md:px-6 py-1 shadow-lg">
+      <div className="min-h-screen flex flex-col bg-white pb-20 md:pb-0">
+        {/* Sticky Navigation: on mobile logo moves to bottom via StickyLogo; CTA at top via StickyCTA */}
+        <nav className="bg-white border-b-4 border-black sticky top-0 z-50 px-4 md:px-6 py-1 shadow-lg hidden md:block">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center cursor-pointer py-1" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Logo className="h-14 md:h-20 w-auto" />
@@ -289,12 +298,13 @@ const App: React.FC = () => {
         </footer>
 
         <StickyCTA onSelectPlan={setSelectedPlan} />
+        <StickyLogo />
 
         {/* Booking Modal */}
         {selectedPlan && (
           <BookingForm
             selectedPlan={selectedPlan}
-            onClose={() => setSelectedPlan(null)}
+            onClose={closeQuotePopup}
           />
         )}
       </div>

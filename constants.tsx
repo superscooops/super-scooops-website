@@ -18,10 +18,10 @@ export const PLANS: ServicePlan[] = [
     frequency: '1x per week cleanup',
     description: 'Perfect for the Lone Wolf',
     features: [
-      '1x weekly mission',
-      'Perfect for the Lone Wolf',
-      'Text alert when secured',
-      'Free First Cleanup!'
+      '1x per week waste removal',
+      'Sanitized equipment every visit',
+      'Text alert when we’re done',
+      'Recommended for 1 dog'
     ],
     color: 'bg-[#28A745]'
   },
@@ -32,10 +32,10 @@ export const PLANS: ServicePlan[] = [
     frequency: '2x per week cleanup',
     description: 'Our Most Popular Defense',
     features: [
-      '2x weekly mission',
-      'Our Most Popular Defense',
-      'Priority mission status',
-      'Gate-lock photo confirmation'
+      '2x per week waste removal',
+      'Sanitized equipment every visit',
+      'Text alert when we’re done',
+      'Recommended for 1–2 dogs'
     ],
     color: 'bg-[#0056B3]',
     badge: 'MOST POPULAR'
@@ -45,12 +45,12 @@ export const PLANS: ServicePlan[] = [
     name: 'The Super Scooops Plan',
     price: 54,
     frequency: '3x per week cleanup',
-    description: 'For the Full Pack',
+    description: 'Maximum coverage',
     features: [
-      '3x weekly mission',
-      'For the Full Pack (3+ dogs)',
-      'Ultra-sanitized equipment',
-      'Elite odor neutralize included'
+      '3x per week waste removal',
+      'Sanitized equipment every visit',
+      'Text alert when we’re done',
+      'Recommended for 2+ dogs'
     ],
     color: 'bg-[#E60000]'
   }
