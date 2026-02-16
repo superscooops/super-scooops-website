@@ -39,37 +39,49 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
 
 
   const selectedFreq = FREQUENCIES[freqIndex];
-  const serviceDaysCount = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
+  const isWeekly = selectedFreq.hasFreePromo;
+  const serviceDaysCount = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : selectedFreq.id === '2x-monthly' ? 2 : 1;
   const preferredDaysSlice = formData.preferredDays.slice(0, serviceDaysCount);
 
   // Dynamic Pricing Calculation
   const quoteTotal = useMemo(() => {
-    // Determine number of cleanings per week
-    const cleansPerWeek = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
-
-    // Base Weekly Price (using $20 base floor)
-    const baseWeekly = 20 * cleansPerWeek;
-
-    // Extras (weekly)
-    const dogWeekly = Math.max(0, dogs - 1) * 2.50;
-    const deodorizerWeekly = formData.deodorizer
-      ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price || 0
-      : 0;
-
-    // Apply Factor and calculate PER CLEANUP
-    const weeklyTotal = (baseWeekly + dogWeekly + deodorizerWeekly) * selectedFreq.factor;
-    const perCleanup = Math.round((weeklyTotal / cleansPerWeek) * 100) / 100;
-
+    if (isWeekly && selectedFreq.factor != null) {
+      const cleansPerWeek = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
+      const baseWeekly = 20 * cleansPerWeek;
+      const dogWeekly = Math.max(0, dogs - 1) * 2.50;
+      const deodorizerWeekly = formData.deodorizer
+        ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price || 0
+        : 0;
+      const weeklyTotal = (baseWeekly + dogWeekly + deodorizerWeekly) * selectedFreq.factor;
+      const perCleanup = Math.round((weeklyTotal / cleansPerWeek) * 100) / 100;
+      return perCleanup.toFixed(2);
+    }
+    const base = selectedFreq.basePerCleanup ?? 30;
+    const extraDogs = Math.max(0, dogs - 1) * 2.50;
+    const deodorizerAdd = formData.deodorizer ? 5 : 0;
+    const perCleanup = Math.round((base + extraDogs + deodorizerAdd) * 100) / 100;
     return perCleanup.toFixed(2);
-  }, [dogs, freqIndex, formData.deodorizer, selectedFreq]);
+  }, [dogs, freqIndex, formData.deodorizer, selectedFreq, isWeekly]);
 
-  const cleansPerWeek = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
-  const weeklyTotal = (parseFloat(quoteTotal) * cleansPerWeek).toFixed(2);
+  const cleansPerWeek = isWeekly ? (selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1) : 0;
+  const weeklyTotal = (parseFloat(quoteTotal) * (cleansPerWeek || 1)).toFixed(2);
   const firstServiceDiscount = 20;
   const afterFirstService = Math.max(0, parseFloat(weeklyTotal) - firstServiceDiscount).toFixed(2);
 
   const weeklyBreakdown = useMemo(() => {
-    const factor = selectedFreq.factor;
+    if (!isWeekly) {
+      const base = selectedFreq.basePerCleanup ?? 30;
+      const extraDogsCount = Math.max(0, dogs - 1);
+      const deodorizerAdd = formData.deodorizer ? 5 : 0;
+      return {
+        base,
+        extraDogs: extraDogsCount * 2.50,
+        deodorizer: deodorizerAdd,
+        deodorizerLabel: formData.deodorizer ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.name ?? null : null,
+        extraDogsCount,
+      };
+    }
+    const factor = selectedFreq.factor ?? 1;
     const baseWeekly = 20 * cleansPerWeek;
     const dogWeekly = Math.max(0, dogs - 1) * 2.50;
     const deodorizerWeekly = formData.deodorizer
@@ -84,7 +96,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
         : null,
       extraDogsCount: Math.max(0, dogs - 1),
     };
-  }, [cleansPerWeek, dogs, formData.deodorizer, selectedFreq]);
+  }, [cleansPerWeek, dogs, formData.deodorizer, selectedFreq, isWeekly]);
 
   const handleGetQuote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -332,6 +344,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
               {/* Frequency Selection Buttons */}
               <div className="relative">
                 <label className="block font-comic text-[10px] sm:text-sm uppercase text-gray-400 mb-2">CLEANUP FREQUENCY?</label>
+                <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 mb-2 uppercase">Free first cleanup applies only to 1x/week, 2x/week & 3x/week.</p>
                 <div className="space-y-2">
                   {FREQUENCIES.map((freq, idx) => (
                     <button
@@ -363,23 +376,41 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
             {/* QUOTE RESULT AREA */}
             {showSignup && (
               <div className="mt-6 sm:mt-10 p-4 sm:p-6 bg-white border-4 border-black border-dashed relative animate-in fade-in slide-in-from-top-4 duration-500 overflow-hidden">
-                <div className="absolute top-4 -right-10 bg-red-600 text-white font-comic text-[8px] sm:text-[10px] w-40 py-1 rotate-[25deg] shadow-lg text-center z-10 border-b-2 border-black/20">
-                  FREE FIRST SCOOOP!
-                </div>
+                {isWeekly && (
+                  <div className="absolute top-4 -right-10 bg-red-600 text-white font-comic text-[8px] sm:text-[10px] w-40 py-1 rotate-[25deg] shadow-lg text-center z-10 border-b-2 border-black/20">
+                    FREE FIRST SCOOOP!
+                  </div>
+                )}
                 <h3 className="font-comic text-sm sm:text-xl mb-1 text-gray-500 uppercase">YOUR ESTIMATE:</h3>
                 <div className="flex items-baseline space-x-1 sm:space-x-2">
                   <span className="font-comic text-4xl sm:text-6xl text-blue-600">${quoteTotal}</span>
                   <span className="font-bold text-[10px] sm:text-lg text-gray-400 uppercase">/ Cleanup</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('signup-fields')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="mt-3 sm:mt-4 w-full bg-green-600 text-white p-2.5 sm:p-3 rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center animate-pulse hover:bg-green-700 transition-colors cursor-pointer"
-                >
-                  <p className="font-comic text-sm sm:text-xl uppercase tracking-wide">🎉 YOUR FIRST SCOOOP IS <span className="underline decoration-4">FREE!</span> 🎉</p>
-                  <p className="text-[10px] mt-1 opacity-90">Tap to claim →</p>
-                </button>
-                <p className="text-[9px] sm:text-xs font-bold text-green-600 mt-2 sm:mt-3 uppercase">🛡️ 100% Satisfaction Guarantee Included</p>
+                {isWeekly ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('signup-fields')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="mt-3 sm:mt-4 w-full bg-green-600 text-white p-2.5 sm:p-3 rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center animate-pulse hover:bg-green-700 transition-colors cursor-pointer"
+                    >
+                      <p className="font-comic text-sm sm:text-xl uppercase tracking-wide">🎉 YOUR FIRST SCOOOP IS <span className="underline decoration-4">FREE!</span> 🎉</p>
+                      <p className="text-[10px] mt-1 opacity-90">Tap to claim →</p>
+                    </button>
+                    <p className="text-[9px] sm:text-xs font-bold text-green-600 mt-2 sm:mt-3 uppercase">🛡️ 100% Satisfaction Guarantee Included</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] sm:text-xs font-bold text-gray-600 mt-2 uppercase">Billed after each service. No free cleanup on this plan.</p>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('signup-fields')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="mt-3 sm:mt-4 w-full bg-green-600 text-white p-2.5 sm:p-3 rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center hover:bg-green-700 transition-colors cursor-pointer"
+                    >
+                      <p className="font-comic text-sm sm:text-xl uppercase tracking-wide">Continue to sign up</p>
+                      <p className="text-[10px] mt-1 opacity-90">Tap to enter details →</p>
+                    </button>
+                  </>
+                )}
 
                 <div className="mt-4 pt-4 border-t-2 border-black/10">
                   <div className="flex-1">
@@ -427,7 +458,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                   </div>
                   <h3 className="font-comic text-2xl sm:text-3xl mb-4 uppercase">Ready to Deploy?</h3>
                   <p className="font-bold text-gray-500 uppercase text-sm mb-8 px-4">
-                    Complete your quote tools on the left to see your mission price and activate your first free scoop!
+                    Complete your quote on the left to see your price. Free first cleanup applies only to 1x/week, 2x/week & 3x/week.
                   </p>
                   <div className="flex justify-center -space-x-3">
                     {[1, 2, 3, 4, 5].map(i => (
@@ -514,7 +545,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <span className="block font-comic text-[10px] uppercase mb-1 text-blue-600">SERVICE DAYS ({serviceDaysCount}x per week)</span>
+                          <span className="block font-comic text-[10px] uppercase mb-1 text-blue-600">
+                            SERVICE DAYS ({serviceDaysCount}x per {selectedFreq.id === '2x-monthly' ? 'month' : 'week'})
+                          </span>
                           {preferredDaysSlice.map((day, i) => (
                             <div key={i}>
                               <label className="block font-comic text-[10px] uppercase mb-0.5 text-gray-500">Day {i + 1}</label>
@@ -539,58 +572,106 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                   ) : (
                     <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
                       <div className="bg-blue-50 p-4 border-2 border-blue-600 rounded-xl relative overflow-hidden">
-                        <div className="absolute top-3 -right-8 bg-red-600 text-white font-comic text-[8px] w-32 py-0.5 rotate-[25deg] uppercase text-center shadow-lg z-10 border-b border-black/20">
-                          Mission Promo
-                        </div>
+                        {isWeekly && (
+                          <div className="absolute top-3 -right-8 bg-red-600 text-white font-comic text-[8px] w-32 py-0.5 rotate-[25deg] uppercase text-center shadow-lg z-10 border-b border-black/20">
+                            Mission Promo
+                          </div>
+                        )}
                         <h4 className="font-comic text-xs text-blue-800 uppercase mb-2">Secure Mission Payment:</h4>
 
-                        <div className="mb-3 p-2 bg-white/80 border-2 border-blue-600 rounded-lg">
-                          <p className="text-[10px] font-bold text-blue-800 uppercase leading-none">Billing</p>
-                          <p className="text-sm font-comic text-blue-900 leading-tight">$20 off your first service. Then <span className="font-bold text-blue-600">${weeklyTotal}/week</span> every Friday.</p>
-                        </div>
-
-                        <div className="mb-4 p-3 bg-white border-2 border-black/10 rounded-lg space-y-1.5">
-                          <p className="text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200 pb-1 mb-1">Pre-payment invoice</p>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-700">{selectedPlan.name} ({cleansPerWeek}×/week)</span>
-                            <span className="font-comic font-bold">${weeklyBreakdown.base.toFixed(2)}</span>
-                          </div>
-                          {weeklyBreakdown.extraDogsCount > 0 && (
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-700">Extra dog{weeklyBreakdown.extraDogsCount > 1 ? 's' : ''} ({weeklyBreakdown.extraDogsCount} × $2.50)</span>
-                              <span className="font-comic font-bold">${weeklyBreakdown.extraDogs.toFixed(2)}</span>
+                        {isWeekly ? (
+                          <>
+                            <div className="mb-3 p-2 bg-white/80 border-2 border-blue-600 rounded-lg">
+                              <p className="text-[10px] font-bold text-blue-800 uppercase leading-none">Billing</p>
+                              <p className="text-sm font-comic text-blue-900 leading-tight">$20 off your first service. Then <span className="font-bold text-blue-600">${weeklyTotal}/week</span> every Friday.</p>
                             </div>
-                          )}
-                          {weeklyBreakdown.deodorizerLabel && (
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-700">{weeklyBreakdown.deodorizerLabel}</span>
-                              <span className="font-comic font-bold">${weeklyBreakdown.deodorizer.toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
-                            <span>Subtotal per week</span>
-                            <span className="font-comic">${weeklyTotal}</span>
-                          </div>
-                          <div className="flex justify-between text-sm text-green-600">
-                            <span>First service discount (1 free scoop)</span>
-                            <span className="font-comic font-bold">-$20.00</span>
-                          </div>
-                          <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
-                            <span>Due at the end of your first full week</span>
-                            <span className="font-comic">${afterFirstService}</span>
-                          </div>
-                          <p className="text-[10px] text-gray-500 mt-1">Then every Friday: ${weeklyTotal}/week</p>
-                        </div>
 
-                        <div className="flex justify-between items-end mb-4 px-1">
-                          <div>
-                            <p className="text-[10px] font-bold text-blue-600/50 uppercase leading-none">DUE TODAY</p>
-                            <p className="text-2xl font-comic text-red-600 leading-none">$0.00</p>
-                          </div>
-                          <div className="text-right text-[10px] font-bold text-gray-500 uppercase">
-                            Then every Fri: ${weeklyTotal}/week
-                          </div>
-                        </div>
+                            <div className="mb-4 p-3 bg-white border-2 border-black/10 rounded-lg space-y-1.5">
+                              <p className="text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200 pb-1 mb-1">Pre-payment invoice</p>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-700">{selectedPlan.name} ({cleansPerWeek}×/week)</span>
+                                <span className="font-comic font-bold">${weeklyBreakdown.base.toFixed(2)}</span>
+                              </div>
+                              {weeklyBreakdown.extraDogsCount > 0 && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-700">Extra dog{weeklyBreakdown.extraDogsCount > 1 ? 's' : ''} ({weeklyBreakdown.extraDogsCount} × $2.50)</span>
+                                  <span className="font-comic font-bold">${weeklyBreakdown.extraDogs.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {weeklyBreakdown.deodorizerLabel && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-700">{weeklyBreakdown.deodorizerLabel}</span>
+                                  <span className="font-comic font-bold">${weeklyBreakdown.deodorizer.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
+                                <span>Subtotal per week</span>
+                                <span className="font-comic">${weeklyTotal}</span>
+                              </div>
+                              <div className="flex justify-between text-sm text-green-600">
+                                <span>First service discount (1 free scoop)</span>
+                                <span className="font-comic font-bold">-$20.00</span>
+                              </div>
+                              <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
+                                <span>Due at the end of your first full week</span>
+                                <span className="font-comic">${afterFirstService}</span>
+                              </div>
+                              <p className="text-[10px] text-gray-500 mt-1">Then every Friday: ${weeklyTotal}/week</p>
+                            </div>
+
+                            <div className="flex justify-between items-end mb-4 px-1">
+                              <div>
+                                <p className="text-[10px] font-bold text-blue-600/50 uppercase leading-none">DUE TODAY</p>
+                                <p className="text-2xl font-comic text-red-600 leading-none">$0.00</p>
+                              </div>
+                              <div className="text-right text-[10px] font-bold text-gray-500 uppercase">
+                                Then every Fri: ${weeklyTotal}/week
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="mb-3 p-2 bg-white/80 border-2 border-blue-600 rounded-lg">
+                              <p className="text-[10px] font-bold text-blue-800 uppercase leading-none">Billing</p>
+                              <p className="text-sm font-comic text-blue-900 leading-tight">Billed <span className="font-bold text-blue-600">${quoteTotal}</span> per cleanup after each service. Card on file.</p>
+                            </div>
+
+                            <div className="mb-4 p-3 bg-white border-2 border-black/10 rounded-lg space-y-1.5">
+                              <p className="text-[10px] font-bold text-gray-500 uppercase border-b border-gray-200 pb-1 mb-1">Per-cleanup rate</p>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-700">{selectedFreq.label} (base)</span>
+                                <span className="font-comic font-bold">${weeklyBreakdown.base.toFixed(2)}</span>
+                              </div>
+                              {weeklyBreakdown.extraDogsCount > 0 && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-700">Extra dog{weeklyBreakdown.extraDogsCount > 1 ? 's' : ''}</span>
+                                  <span className="font-comic font-bold">${weeklyBreakdown.extraDogs.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {weeklyBreakdown.deodorizerLabel && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-700">{weeklyBreakdown.deodorizerLabel}</span>
+                                  <span className="font-comic font-bold">${weeklyBreakdown.deodorizer.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 mt-1">
+                                <span>Per cleanup</span>
+                                <span className="font-comic">${quoteTotal}</span>
+                              </div>
+                              <p className="text-[10px] text-gray-500 mt-1">Charged after each visit. No free cleanup on this plan.</p>
+                            </div>
+
+                            <div className="flex justify-between items-end mb-4 px-1">
+                              <div>
+                                <p className="text-[10px] font-bold text-blue-600/50 uppercase leading-none">DUE TODAY</p>
+                                <p className="text-2xl font-comic text-red-600 leading-none">$0.00</p>
+                              </div>
+                              <div className="text-right text-[10px] font-bold text-gray-500 uppercase">
+                                Billed after each service
+                              </div>
+                            </div>
+                          </>
+                        )}
 
                         <div className="mb-4 p-3 bg-white border-2 border-black/10 rounded-lg space-y-3">
                           <p className="text-[10px] font-bold text-gray-500 uppercase">Billing address</p>
@@ -648,7 +729,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                             },
                           }} />
                         </div>
-                        <p className="text-[8px] font-bold text-blue-600 mt-2 uppercase tracking-tighter italic text-center">🛡️ $20 off your first scoop applied. Billed every Friday after first service.</p>
+                        <p className="text-[8px] font-bold text-blue-600 mt-2 uppercase tracking-tighter italic text-center">
+                          {isWeekly ? '🛡️ $20 off your first scoop applied. Billed every Friday after first service.' : '🛡️ Card on file. Billed per cleanup after each service.'}
+                        </p>
                       </div>
                       <button
                         onClick={() => setShowPayment(false)}

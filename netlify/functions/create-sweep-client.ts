@@ -155,9 +155,11 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
             '3x-weekly': 'three_times_a_week',
             '2x-weekly': 'two_times_a_week',
             'weekly': 'once_a_week',
-            'bi-weekly': 'bi_weekly',
-            'monthly': 'every_four_weeks'
+            '2x-monthly': 'twice_per_month',
+            '1x-monthly': 'every_four_weeks',
+            'one-time': 'once',
         };
+        const isWeekly = ['weekly', '2x-weekly', '3x-weekly'].includes(data.frequencyId || 'weekly');
 
         const deodorizerLabel = data.deodorizer
             ? data.deodorizer.replace('deodorizer-', '').toUpperCase()
@@ -189,62 +191,11 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
         }
 
         const stripe = new Stripe(stripeSecret);
-        const PRICE_IDS: Record<string, string | undefined> = {
-            'sidekick': process.env.STRIPE_PRICE_SIDEKICK,
-            'hero': process.env.STRIPE_PRICE_HERO,
-            'super-scooper': process.env.STRIPE_PRICE_SUPER_SCOOOPER,
-            'extra-dog': process.env.STRIPE_PRICE_EXTRA_DOG,
-            'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1x,
-            'deodorizer-2x': process.env.STRIPE_PRICE_DEODORIZER_2x,
-            'deodorizer-3x': process.env.STRIPE_PRICE_DEODORIZER_3x,
-        };
-
-        const subscriptionItems: Stripe.SubscriptionCreateParams.Item[] = [];
-        const basePriceId = data.planId ? PRICE_IDS[data.planId] : undefined;
-        if (!basePriceId) {
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ error: `Stripe price not configured for plan: ${data.planId}` })
-            };
-        }
-        subscriptionItems.push({ price: basePriceId, quantity: 1 });
-
         const dogs = typeof data.dogs === 'number' ? data.dogs : 1;
-        if (dogs > 1) {
-            const extraDogPriceId = PRICE_IDS['extra-dog'];
-            if (!extraDogPriceId) {
-                return {
-                    statusCode: 500,
-                    body: JSON.stringify({ error: 'Stripe price not configured for extra dog' })
-                };
-            }
-            subscriptionItems.push({ price: extraDogPriceId, quantity: dogs - 1 });
-        }
-
-        if (data.deodorizer) {
-            const deodorizerPriceId = PRICE_IDS[data.deodorizer];
-            if (!deodorizerPriceId) {
-                return {
-                    statusCode: 500,
-                    body: JSON.stringify({ error: `Stripe price not configured for deodorizer (${data.deodorizer})` })
-                };
-            }
-            subscriptionItems.push({ price: deodorizerPriceId, quantity: 1 });
-        }
-
         const billAddress = (data.billingAddress && data.billingAddress.trim()) ? data.billingAddress.trim() : data.address;
         const billCity = (data.billingCity && data.billingCity.trim()) ? data.billingCity.trim() : data.city;
         const billState = (data.billingState && data.billingState.trim()) ? data.billingState.trim() : data.state;
         const billZip = (data.billingZip && data.billingZip.trim()) ? data.billingZip.trim() : data.zip;
-
-        const now = new Date();
-        const nextFriday = new Date(now);
-        const dayOfWeek = nextFriday.getDay();
-        const daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (5 + (7 - dayOfWeek));
-        nextFriday.setDate(nextFriday.getDate() + daysToFriday);
-        nextFriday.setUTCHours(12, 0, 0, 0);
-        const billingCycleAnchor = Math.floor(nextFriday.getTime() / 1000);
-        const promotionCodeId = process.env.STRIPE_FIRST_SCOOP_PROMO_CODE || 'promo_1T0dyt1vIpt8szc84tV37D4X';
 
         let stripeCustomerId: string;
         try {
@@ -261,26 +212,76 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
                 },
                 metadata: {
                     plan_id: data.planId || '',
+                    frequency_id: data.frequencyId || '',
                     dogs: String(dogs),
                 },
             });
             stripeCustomerId = customer.id;
 
-            const subscriptionParams: Stripe.SubscriptionCreateParams = {
-                customer: customer.id,
-                items: subscriptionItems,
-                billing_cycle_anchor: billingCycleAnchor,
-                proration_behavior: 'none',
-                metadata: {
-                    plan_id: data.planId || '',
-                    dogs: String(dogs),
-                    service_days: serviceDaysStr,
-                },
-            };
-            if (promotionCodeId) {
-                subscriptionParams.discounts = [{ promotion_code: promotionCodeId }];
+            if (isWeekly) {
+                const PRICE_IDS: Record<string, string | undefined> = {
+                    'sidekick': process.env.STRIPE_PRICE_SIDEKICK,
+                    'hero': process.env.STRIPE_PRICE_HERO,
+                    'super-scooper': process.env.STRIPE_PRICE_SUPER_SCOOOPER,
+                    'extra-dog': process.env.STRIPE_PRICE_EXTRA_DOG,
+                    'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1x,
+                    'deodorizer-2x': process.env.STRIPE_PRICE_DEODORIZER_2x,
+                    'deodorizer-3x': process.env.STRIPE_PRICE_DEODORIZER_3x,
+                };
+                const subscriptionItems: Stripe.SubscriptionCreateParams.Item[] = [];
+                const basePriceId = data.planId ? PRICE_IDS[data.planId] : undefined;
+                if (!basePriceId) {
+                    return {
+                        statusCode: 500,
+                        body: JSON.stringify({ error: `Stripe price not configured for plan: ${data.planId}` })
+                    };
+                }
+                subscriptionItems.push({ price: basePriceId, quantity: 1 });
+                if (dogs > 1) {
+                    const extraDogPriceId = PRICE_IDS['extra-dog'];
+                    if (!extraDogPriceId) {
+                        return {
+                            statusCode: 500,
+                            body: JSON.stringify({ error: 'Stripe price not configured for extra dog' })
+                        };
+                    }
+                    subscriptionItems.push({ price: extraDogPriceId, quantity: dogs - 1 });
+                }
+                if (data.deodorizer) {
+                    const deodorizerPriceId = PRICE_IDS[data.deodorizer];
+                    if (!deodorizerPriceId) {
+                        return {
+                            statusCode: 500,
+                            body: JSON.stringify({ error: `Stripe price not configured for deodorizer (${data.deodorizer})` })
+                        };
+                    }
+                    subscriptionItems.push({ price: deodorizerPriceId, quantity: 1 });
+                }
+                const now = new Date();
+                const nextFriday = new Date(now);
+                const dayOfWeek = nextFriday.getDay();
+                const daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (5 + (7 - dayOfWeek));
+                nextFriday.setDate(nextFriday.getDate() + daysToFriday);
+                nextFriday.setUTCHours(12, 0, 0, 0);
+                const billingCycleAnchor = Math.floor(nextFriday.getTime() / 1000);
+                const promotionCodeId = process.env.STRIPE_FIRST_SCOOP_PROMO_CODE || 'promo_1T0dyt1vIpt8szc84tV37D4X';
+                const subscriptionParams: Stripe.SubscriptionCreateParams = {
+                    customer: customer.id,
+                    items: subscriptionItems,
+                    billing_cycle_anchor: billingCycleAnchor,
+                    proration_behavior: 'none',
+                    metadata: {
+                        plan_id: data.planId || '',
+                        dogs: String(dogs),
+                        service_days: serviceDaysStr,
+                    },
+                };
+                if (promotionCodeId) {
+                    subscriptionParams.discounts = [{ promotion_code: promotionCodeId }];
+                }
+                await stripe.subscriptions.create(subscriptionParams);
             }
-            await stripe.subscriptions.create(subscriptionParams);
+            // Non-weekly: customer only (no subscription); billed post-service per cleanup
         } catch (stripeErr: any) {
             console.error('Stripe error (card may be declined):', stripeErr);
             const msg = stripeErr.message || 'Unknown error';
@@ -293,6 +294,7 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
         }
 
         // --- STEP 2: Only after Stripe succeeds, create client in Sweep&GO.
+        const billingInterval = isWeekly ? 'weekly' : (data.frequencyId === 'one-time' ? 'one_time' : 'monthly');
         const registrationPayload = {
             first_name: firstName,
             last_name: lastName,
@@ -306,7 +308,7 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
             cross_sell_name: data.planName || 'Standard Plan',
             clean_up_frequency: freqMap[data.frequencyId || 'weekly'] || 'once_a_week',
             category: "cleanup",
-            billing_interval: "weekly",
+            billing_interval: billingInterval,
             credit_card_token: data.stripeToken,
             name_on_card: data.name.trim(),
             marketing_allowed: 1,
@@ -314,10 +316,9 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
             organization: ORG_SLUG,
             marketing_allowed_source: "open_api",
             service_days: serviceDaysStr,
-            comment: `PROMO: FREE FIRST CLEANING
-Preferred Service Days: ${serviceDaysStr}
-Dogs: ${data.dogs || 1}
-Deodorizer Mission: ${deodorizerLabel}`
+            comment: isWeekly
+                ? `PROMO: FREE FIRST CLEANING\nPreferred Service Days: ${serviceDaysStr}\nDogs: ${data.dogs || 1}\nDeodorizer Mission: ${deodorizerLabel}`
+                : `Billed per cleanup after service. No free cleanup.\nPreferred Service Days: ${serviceDaysStr}\nDogs: ${data.dogs || 1}\nDeodorizer Mission: ${deodorizerLabel}`,
         };
 
         const response = await fetch(
@@ -367,8 +368,8 @@ Deodorizer Mission: ${deodorizerLabel}`
                 mode: 'registration',
                 clientId: result.client_id || result.id,
                 data: result,
-                subscriptionActive: true,
-                billingDay: 'Friday',
+                subscriptionActive: isWeekly,
+                billingDay: isWeekly ? 'Friday' : undefined,
             } as SweepAndGoResponse)
         };
 

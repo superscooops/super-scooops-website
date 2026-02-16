@@ -56,10 +56,22 @@ export const PLANS: ServicePlan[] = [
   }
 ];
 
-export const FREQUENCIES = [
-  { id: '3x-weekly', label: '3x Weekly', factor: 0.9 },
-  { id: '2x-weekly', label: '2x Weekly', factor: 0.95 },
-  { id: 'weekly', label: 'Weekly', factor: 1.0 }
+export type FrequencyId = '3x-weekly' | '2x-weekly' | 'weekly' | '2x-monthly' | '1x-monthly' | 'one-time';
+
+export const FREQUENCIES: {
+  id: FrequencyId;
+  label: string;
+  factor?: number;
+  basePerCleanup?: number;
+  stripePriceId?: string;
+  hasFreePromo: boolean;
+}[] = [
+  { id: '3x-weekly', label: '3x Weekly', factor: 0.9, hasFreePromo: true },
+  { id: '2x-weekly', label: '2x Weekly', factor: 0.95, hasFreePromo: true },
+  { id: 'weekly', label: 'Weekly', factor: 1.0, hasFreePromo: true },
+  { id: '2x-monthly', label: '2x / Month', basePerCleanup: 25, stripePriceId: 'price_1T1JeT1vIpt8szc8mUH2PKdp', hasFreePromo: false },
+  { id: '1x-monthly', label: '1x / Month', basePerCleanup: 25, stripePriceId: 'price_1T1Jf01vIpt8szc8kuJNU3uE', hasFreePromo: false },
+  { id: 'one-time', label: 'One Time', basePerCleanup: 30, stripePriceId: 'price_1T1Bmy1vIpt8szc8KuxpZsWC', hasFreePromo: false },
 ];
 
 export const DEODORIZER_OPTIONS = [
