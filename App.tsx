@@ -51,14 +51,6 @@ const App: React.FC = () => {
               <button onClick={() => handleScroll('plans')} className="hover:text-[#E60000] transition-colors font-bold">Mission Pricing</button>
               <button onClick={() => handleScroll('faq')} className="hover:text-[#E60000] transition-colors font-bold">Intel Briefing</button>
               <a
-                href="https://client.sweepandgo.com/login/super-scooops-qhnjn"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#0056B3] transition-colors font-bold text-gray-400"
-              >
-                CLIENT PORTAL
-              </a>
-              <a
                 href="https://billing.stripe.com/p/login/8x200beQn9lQ4VhcPXcwg00"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -275,16 +267,6 @@ const App: React.FC = () => {
                   <li><button onClick={() => handleScroll('plans')} className="hover:text-white uppercase">Pricing Plans</button></li>
                   <li><button onClick={() => handleScroll('how')} className="hover:text-white uppercase">The Strategy</button></li>
                   <li><button onClick={() => handleScroll('faq')} className="hover:text-white uppercase">Common Briefing</button></li>
-                  <li>
-                    <a
-                      href="https://client.sweepandgo.com/login/super-scooops-qhnjn"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-white uppercase"
-                    >
-                      Client Portal
-                    </a>
-                  </li>
                   <li>
                     <a
                       href="https://billing.stripe.com/p/login/8x200beQn9lQ4VhcPXcwg00"
