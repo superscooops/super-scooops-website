@@ -356,7 +356,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                         : 'bg-white text-black hover:bg-gray-100'
                         }`}
                     >
-                      <span className="font-comic text-sm sm:text-lg uppercase">{freq.label}</span>
+                      <span className="flex items-center gap-2 flex-wrap">
+                        <span className="font-comic text-sm sm:text-lg uppercase">{freq.label}</span>
+                        {freq.hasFreePromo && (
+                          <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${freqIndex === idx ? 'bg-white/20 text-white' : 'bg-green-100 text-green-800'}`}>
+                            1st free
+                          </span>
+                        )}
+                      </span>
                       {freqIndex === idx && <span className="text-xl">🛡️</span>}
                     </button>
                   ))}
