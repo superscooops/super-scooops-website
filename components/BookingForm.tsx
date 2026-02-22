@@ -295,8 +295,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/80 backdrop-blur-md p-4 min-h-[100dvh] flex items-center justify-center">
-      <div className="bg-white w-full max-w-4xl min-h-0 border-x-0 sm:border-4 border-black relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] my-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/80 backdrop-blur-md p-2 sm:p-4 min-h-[100dvh] flex items-center justify-center pb-[env(safe-area-inset-bottom)]">
+      <div className="bg-white w-full max-w-4xl min-h-0 border-x-0 sm:border-4 border-black relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] my-auto max-h-[100dvh] overflow-y-auto">
 
         {/* Close Button */}
         <button
@@ -306,10 +306,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
           X
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-0">
 
           {/* LEFT COLUMN: THE QUOTE TOOL */}
-          <div className="p-4 sm:p-10 border-r-0 lg:border-r-4 border-black bg-yellow-50">
+          <div className="p-3 sm:p-6 lg:p-10 border-r-0 lg:border-r-4 border-black bg-yellow-50 min-w-0">
             <div className="mb-4 sm:mb-8 text-center sm:text-left">
               <h2 className="font-comic text-2xl sm:text-4xl text-blue-600 mb-1 leading-none uppercase">GET YOUR MISSION QUOTE!</h2>
               <p className="font-bold text-gray-500 italic uppercase text-[10px] sm:text-xs">Instant Pricing. No Commitment.</p>
@@ -401,7 +401,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
 
             {/* QUOTE RESULT AREA */}
             {showSignup && (
-              <div className="mt-6 sm:mt-10 p-4 sm:p-6 bg-white border-4 border-black border-dashed relative animate-in fade-in slide-in-from-top-4 duration-500 overflow-hidden">
+              <div className="mt-6 sm:mt-10 p-4 sm:p-6 bg-white border-4 border-black border-dashed relative animate-in fade-in slide-in-from-top-4 duration-500 overflow-visible">
                 {isWeekly && (
                   <div className="absolute top-4 -right-10 bg-red-600 text-white font-comic text-[8px] sm:text-[10px] w-40 py-1 rotate-[25deg] shadow-lg text-center z-10 border-b-2 border-black/20">
                     FREE FIRST SCOOOP!
@@ -439,13 +439,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                 )}
 
                 <div className="mt-4 pt-4 border-t-2 border-black/10">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-[10px] sm:text-[12px] font-comic text-blue-600 uppercase mb-2">✨ ADD ELITE YARD DEODORIZING</p>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, deodorizer: null })}
-                        className={`flex-1 py-1.5 sm:py-2 px-2 rounded-lg border-2 font-comic text-[10px] sm:text-xs transition-all ${formData.deodorizer === null
+                        className={`w-full sm:flex-1 sm:min-w-0 py-2.5 sm:py-2 px-3 rounded-lg border-2 font-comic text-[10px] sm:text-xs transition-all ${formData.deodorizer === null
                           ? 'bg-red-600 text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
                           : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
                           }`}
@@ -457,12 +457,12 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                           type="button"
                           key={opt.id}
                           onClick={() => setFormData({ ...formData, deodorizer: opt.id })}
-                          className={`flex-1 py-1.5 sm:py-2 px-2 rounded-lg border-2 font-comic text-[10px] sm:text-xs transition-all ${formData.deodorizer === opt.id
+                          className={`w-full sm:flex-1 sm:min-w-0 py-2.5 sm:py-2 px-3 rounded-lg border-2 font-comic text-[10px] sm:text-xs transition-all ${formData.deodorizer === opt.id
                             ? 'bg-blue-600 text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
                             : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
                             }`}
                         >
-                          {opt.label} ($${opt.price.toFixed(2)}/cleanup)
+                          {opt.label} ({'$' + opt.price.toFixed(2) + '/cleanup'})
                         </button>
                       ))}
                     </div>
@@ -473,7 +473,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
           </div>
 
           {/* RIGHT COLUMN: VSL & SIGNUP */}
-          <div className="p-4 sm:p-10 bg-white">
+          <div className="p-3 sm:p-6 lg:p-10 bg-white min-w-0">
 
             {/* REGISTRATION FLOW */}
             <div className={`${!showSignup ? 'hidden lg:flex' : 'flex'} flex-col h-full justify-center`}>
