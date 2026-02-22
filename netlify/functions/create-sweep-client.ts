@@ -224,9 +224,10 @@ Preferred Day(s): ${Array.isArray(data.preferredDays) && data.preferredDays.leng
                     'hero': process.env.STRIPE_PRICE_HERO,
                     'super-scooper': process.env.STRIPE_PRICE_SUPER_SCOOOPER,
                     'extra-dog': process.env.STRIPE_PRICE_EXTRA_DOG,
-                    'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1x,
-                    'deodorizer-2x': process.env.STRIPE_PRICE_DEODORIZER_2x,
-                    'deodorizer-3x': process.env.STRIPE_PRICE_DEODORIZER_3x,
+                    'deodorizer-bi-weekly': process.env.STRIPE_PRICE_DEODORIZER_BI_WEEKLY || 'price_1T3jTJ1vIpt8szc8pZMZPzo2',
+                    'deodorizer-weekly': process.env.STRIPE_PRICE_DEODORIZER_WEEKLY || 'price_1T3jRe1vIpt8szc8UG2vaHTv',
+                    'deodorizer-1x-month': process.env.STRIPE_PRICE_DEODORIZER_1X_MONTH || 'price_1T3jXh1vIpt8szc89rdVrBlJ',
+                    'deodorizer-1x': process.env.STRIPE_PRICE_DEODORIZER_1X || 'price_1T3jZw1vIpt8szc8nEm9IQkj',
                 };
                 const subscriptionItems: Stripe.SubscriptionCreateParams.Item[] = [];
                 const basePriceId = data.planId ? PRICE_IDS[data.planId] : undefined;

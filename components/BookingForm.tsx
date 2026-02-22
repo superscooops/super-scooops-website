@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ServicePlan } from '../types';
 import { PLANS, FREQUENCIES, DEODORIZER_OPTIONS } from '../constants';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
@@ -43,22 +43,38 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
   const serviceDaysCount = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : selectedFreq.id === '2x-monthly' ? 2 : 1;
   const preferredDaysSlice = formData.preferredDays.slice(0, serviceDaysCount);
 
+  // Deodorizer options shown depend on service frequency
+  const deodorizerOptionsForFrequency = useMemo(
+    () => DEODORIZER_OPTIONS.filter(opt => opt.forFrequencies.includes(selectedFreq.id)),
+    [selectedFreq.id]
+  );
+
+  // Clear deodorizer if current selection is not valid for the selected frequency
+  useEffect(() => {
+    if (formData.deodorizer && !deodorizerOptionsForFrequency.some(opt => opt.id === formData.deodorizer)) {
+      setFormData(prev => ({ ...prev, deodorizer: null }));
+    }
+  }, [selectedFreq.id, deodorizerOptionsForFrequency, formData.deodorizer]);
+
   // Dynamic Pricing Calculation
   const quoteTotal = useMemo(() => {
     if (isWeekly && selectedFreq.factor != null) {
       const cleansPerWeek = selectedFreq.id === '3x-weekly' ? 3 : selectedFreq.id === '2x-weekly' ? 2 : 1;
       const baseWeekly = 20 * cleansPerWeek;
       const dogWeekly = Math.max(0, dogs - 1) * 2.50;
-      const deodorizerWeekly = formData.deodorizer
+      const deodorizerPerCleanup = formData.deodorizer
         ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price || 0
         : 0;
+      const deodorizerWeekly = deodorizerPerCleanup * cleansPerWeek;
       const weeklyTotal = (baseWeekly + dogWeekly + deodorizerWeekly) * selectedFreq.factor;
       const perCleanup = Math.round((weeklyTotal / cleansPerWeek) * 100) / 100;
       return perCleanup.toFixed(2);
     }
     const base = selectedFreq.basePerCleanup ?? 30;
     const extraDogs = Math.max(0, dogs - 1) * 2.50;
-    const deodorizerAdd = formData.deodorizer ? 5 : 0;
+    const deodorizerAdd = formData.deodorizer
+      ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price ?? 0
+      : 0;
     const perCleanup = Math.round((base + extraDogs + deodorizerAdd) * 100) / 100;
     return perCleanup.toFixed(2);
   }, [dogs, freqIndex, formData.deodorizer, selectedFreq, isWeekly]);
@@ -72,7 +88,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     if (!isWeekly) {
       const base = selectedFreq.basePerCleanup ?? 30;
       const extraDogsCount = Math.max(0, dogs - 1);
-      const deodorizerAdd = formData.deodorizer ? 5 : 0;
+      const deodorizerAdd = formData.deodorizer
+        ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price ?? 0
+        : 0;
       return {
         base,
         extraDogs: extraDogsCount * 2.50,
@@ -84,9 +102,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
     const factor = selectedFreq.factor ?? 1;
     const baseWeekly = 20 * cleansPerWeek;
     const dogWeekly = Math.max(0, dogs - 1) * 2.50;
-    const deodorizerWeekly = formData.deodorizer
+    const deodorizerPerCleanup = formData.deodorizer
       ? DEODORIZER_OPTIONS.find(opt => opt.id === formData.deodorizer)?.price ?? 0
       : 0;
+    const deodorizerWeekly = deodorizerPerCleanup * cleansPerWeek;
     return {
       base: (baseWeekly * factor),
       extraDogs: (dogWeekly * factor),
@@ -360,7 +379,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                         <span className="font-comic text-sm sm:text-lg uppercase">{freq.label}</span>
                         {freq.hasFreePromo && (
                           <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${freqIndex === idx ? 'bg-white/20 text-white' : 'bg-green-100 text-green-800'}`}>
-                            1st free
+                            1st clean up free
                           </span>
                         )}
                       </span>
@@ -433,7 +452,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                       >
                         NONE
                       </button>
-                      {DEODORIZER_OPTIONS.map(opt => (
+                      {deodorizerOptionsForFrequency.map(opt => (
                         <button
                           type="button"
                           key={opt.id}
@@ -443,7 +462,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ selectedPlan, onClose }) => {
                             : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
                             }`}
                         >
-                          {opt.label} (+${(opt.price / (opt.id === 'deodorizer-3x' ? 3 : opt.id === 'deodorizer-2x' ? 2 : 1)).toFixed(2)})
+                          {opt.label} ($${opt.price.toFixed(2)}/cleanup)
                         </button>
                       ))}
                     </div>

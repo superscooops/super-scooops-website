@@ -74,10 +74,20 @@ export const FREQUENCIES: {
   { id: 'one-time', label: 'One Time', basePerCleanup: 30, stripePriceId: 'price_1T1Bmy1vIpt8szc8KuxpZsWC', hasFreePromo: false },
 ];
 
-export const DEODORIZER_OPTIONS = [
-  { id: 'deodorizer-1x', name: '1x Weekly Deodorizing', price: 6.25, label: '1x' },
-  { id: 'deodorizer-2x', name: '2x Weekly Deodorizing', price: 11.50, label: '2x' },
-  { id: 'deodorizer-3x', name: '3x Weekly Deodorizing', price: 15.00, label: '3x' }
+/** Which service frequency IDs can see this deodorizer option */
+export type DeodorizerForFrequency = 'one-time' | '1x-monthly' | '2x-monthly' | 'weekly' | '2x-weekly' | '3x-weekly';
+
+export const DEODORIZER_OPTIONS: {
+  id: string;
+  name: string;
+  price: number;
+  label: string;
+  forFrequencies: DeodorizerForFrequency[];
+}[] = [
+  { id: 'deodorizer-1x', name: 'Deodorizer', price: 29, label: 'Deodorizer', forFrequencies: ['one-time'] },
+  { id: 'deodorizer-bi-weekly', name: 'Bi-Weekly Deodorizing', price: 22.50, label: 'Bi-Weekly', forFrequencies: ['2x-monthly', 'weekly', '2x-weekly', '3x-weekly'] },
+  { id: 'deodorizer-weekly', name: 'Weekly Deodorizing', price: 19.75, label: 'Weekly', forFrequencies: ['weekly', '2x-weekly', '3x-weekly'] },
+  { id: 'deodorizer-1x-month', name: '1x/Month Deodorizing', price: 29, label: '1x/Month', forFrequencies: ['1x-monthly', '2x-monthly', 'weekly', '2x-weekly', '3x-weekly'] },
 ];
 
 export const ADD_ONS: AddOn[] = [
